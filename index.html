@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
     <style>
-        :root { --nav-h: 48px; }
+        :root { --nav-h: 52px; } /* 稍微調高一點以適應圓形 Logo */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding-top: var(--nav-h); overflow-x: hidden; }
         
         /* 導覽列 */
@@ -31,9 +31,8 @@
         .theme-dark { background: #000; color: #fff; }
         .theme-light { background: #f5f5f7; color: #1d1d1f; }
 
-        /* 動態預備類別 */
-        .reveal { opacity: 0; transform: translateY(40px); transition: all 1s ease-out; }
-        .reveal.active { opacity: 1; transform: translateY(0); }
+        /* 動態預備類別 (由 GSAP 控制) */
+        .reveal { opacity: 0; transform: translateY(40px); }
 
         /* 圖片圓角增強 */
         .rounded-apple { border-radius: 32px; }
@@ -41,16 +40,17 @@
 </head>
 <body>
 
-    <nav class="glass-nav fixed top-0 w-full h-[48px]">
+    <nav class="glass-nav fixed top-0 w-full h-[52px]">
         <div class="max-w-screen-xl mx-auto h-full flex items-center justify-between px-6">
-            <a href="index.html" class="flex items-center">
-    <img src="photo\S__38223874.jpg" alt="Eric Justin" class="h-5 w-auto object-contain">
-     <span class="ml-2 text-sm font-semibold tracking-tight text-white">Eric Justin</span>
+            <a href="index.html" class="flex items-center group">
+                <img src="photo/S__38223874.jpg" alt="Eric Justin" 
+                     class="w-7 h-7 rounded-full object-cover ring-1 ring-white/20 group-hover:ring-white/50 transition">
+                <span class="ml-2.5 text-sm font-semibold tracking-tight text-white">Eric Justin</span>
             </a>
             <div class="flex gap-8 text-[12px] text-white/80 font-medium">
-                <a href="buy.html" class="hover:text-white transition">選購</a>
+                <a href="catalog.html" class="hover:text-white transition">選購</a>
                 <a href="#" class="hover:text-white transition">支援</a>
-                <a href="buy.html" class="opacity-60">🛒</a>
+                <a href="catalog.html" class="opacity-60 hover:opacity-100 transition">🛒</a>
             </div>
         </div>
     </nav>
@@ -60,14 +60,14 @@
             <h1 class="text-gradient text-5xl md:text-8xl font-bold mb-4">30分鐘</h1>
             <h2 class="text-xl md:text-3xl font-semibold mb-8 text-white">2026。大螢幕上見。</h2>
             <div class="flex flex-wrap gap-4 justify-center items-center">
-                <a href="buy.html" class="bg-blue-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">立即購買</a>
+                <a href="catalog.html" class="bg-blue-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-blue-500 transition shadow-lg shadow-blue-900/20">立即購買</a>
                 <a href="#features" class="text-blue-500 text-lg hover:underline ml-4">了解更多 ></a>
             </div>
         </div>
         
         <div class="mt-16 w-full max-w-4xl reveal px-4">
-            <img src="photo\30分鐘.png" 
-                 class="w-full h-auto rounded-apple shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform hover:scale-[1.02] transition duration-700">
+            <img src="photo/30分鐘.png" 
+                 class="w-full h-auto rounded-apple shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform hover:scale-[1.01] transition duration-700">
         </div>
     </section>
 
@@ -85,11 +85,11 @@
                         <p class="text-gray-500 text-lg leading-relaxed">歷來最萌。可愛到起飛!</p>
                     </div>
                     <div class="flex-grow flex items-center justify-center overflow-hidden">
-                        <img src="photo\仍然.png" 
+                        <img src="photo/仍然.png" 
                              class="max-h-[260px] object-contain group-hover:scale-110 transition duration-700">
                     </div>
                     <div class="pt-6 border-t border-gray-50">
-                        <a href="buy.html" class="text-blue-600 font-semibold hover:underline">立刻選購 ></a>
+                        <a href="catalog.html" class="text-blue-600 font-semibold hover:underline">立刻選購 ></a>
                     </div>
                 </div>
 
@@ -100,11 +100,11 @@
                         <p class="text-gray-500 text-lg leading-relaxed">捕捉每個Airpods pro。</p>
                     </div>
                     <div class="flex-grow flex items-center justify-center overflow-hidden">
-                        <img src="photo\S__38223874.jpg" 
+                        <img src="photo/S__38223874.jpg" 
                              class="max-h-[260px] object-contain group-hover:scale-110 transition duration-700">
                     </div>
                     <div class="pt-6 border-t border-gray-50">
-                        <a href="buy.html" class="text-blue-600 font-semibold hover:underline">立刻選購 ></a>
+                        <a href="catalog.html" class="text-blue-600 font-semibold hover:underline">立刻選購 ></a>
                     </div>
                 </div>
             </div>
@@ -128,16 +128,14 @@
                 <a href="index.html" class="hover:text-white transition">網站地圖</a>
             </div>
             <p class="text-gray-600 text-[10px]">
-                Copyright © 2026 Ryan Su. 保留所有權利。
+                Copyright © 2026 Eric Justin. 保留所有權利。
             </p>
         </div>
     </footer>
 
     <script>
-        // 註冊 GSAP 插件
         gsap.registerPlugin(ScrollTrigger);
 
-        // 初始化滾動動畫
         window.addEventListener('DOMContentLoaded', () => {
             const elements = gsap.utils.toArray(".reveal");
             
@@ -149,13 +147,12 @@
                     ease: "power4.out",
                     scrollTrigger: {
                         trigger: el,
-                        start: "top 90%", // 當元素進入視窗 90% 時開始動畫
+                        start: "top 90%",
                         toggleActions: "play none none reverse"
                     }
                 });
             });
 
-            // 頂部導覽列隨滾動改變透明度
             ScrollTrigger.create({
                 start: "top top",
                 onUpdate: (self) => {

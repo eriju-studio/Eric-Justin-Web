@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>所有商品 | Eric Justin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #fff; color: #1d1d1f; padding-top: 80px; }
+        .nav-glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 0.5px solid #d2d2d7; }
+        
+        /* 商品卡片動畫 */
+        .product-card {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .product-card:hover {
+            transform: translateY(-8px);
+        }
+
+        /* 圖片容器：強制正方形且圓角 */
+        .img-container {
+            background: #f5f5f7;
+            border-radius: 24px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1 / 1;
+            transition: background 0.3s;
+        }
+        .product-card:hover .img-container {
+            background: #ebebe7;
+        }
+        .img-container img {
+            width: 85%;
+            height: 85%;
+            object-fit: contain;
+            transition: transform 0.5s ease;
+        }
+        .product-card:hover img {
+            transform: scale(1.08);
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="nav-glass fixed top-0 w-full z-50 px-6 py-3 flex justify-between items-center h-[52px]">
+        <a href="index.html" class="flex items-center group">
+            <img src="photo/S__38223874.jpg" alt="Logo" 
+                 class="w-7 h-7 rounded-full object-cover ring-1 ring-black/5 group-hover:ring-black/20 transition">
+            <span class="ml-2.5 text-sm font-semibold tracking-tight">Eric Justin</span>
+        </a>
+        <div class="flex gap-6 text-xs md:text-sm font-medium">
+            <a href="index.html" class="hover:text-blue-600 transition">首頁</a>
+            <a href="catalog.html" class="text-blue-600 font-bold">全部商品</a>
+        </div>
+    </nav>
+
+    <main class="max-w-screen-xl mx-auto px-4 md:px-8 py-10">
+        <header class="mb-12 md:mb-20">
+            <h1 class="text-3xl md:text-5xl font-bold tracking-tight text-gray-900">探索所有精緻小卡</h1>
+            <p class="text-gray-500 mt-3 text-lg md:text-xl">質感設計，為您的收藏增添獨特風格。</p>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-10">
+            
+            <a href="buy.html" class="product-card group">
+                <div class="img-container mb-4">
+                    <img src="photo/仍然.png" alt="經典磨砂小卡">
+                </div>
+                <div class="px-1">
+                    <span class="text-orange-600 text-[10px] md:text-xs font-bold uppercase tracking-widest">新品</span>
+                    <h3 class="text-base md:text-xl font-bold text-gray-900 leading-tight mt-1">經典磨砂小卡</h3>
+                    <p class="text-gray-500 text-xs mt-1 line-clamp-1">頂級質感紙張</p>
+                    <p class="text-sm md:text-lg font-semibold mt-2 text-black">NT$ 10 起</p>
+                </div>
+            </a>
+
+            <a href="buy.html" class="product-card group opacity-50">
+                <div class="img-container mb-4">
+                    <img src="photo/S__38223874.jpg" alt="開發中">
+                </div>
+                <div class="px-1">
+                    <span class="text-blue-600 text-[10px] md:text-xs font-bold uppercase tracking-widest">期待</span>
+                    <h3 class="text-base md:text-xl font-bold text-gray-900 leading-tight mt-1">即將登場</h3>
+                    <p class="text-gray-500 text-xs mt-1 line-clamp-1">Coming Soon</p>
+                    <p class="text-sm md:text-lg font-semibold mt-2 text-black">敬請期待</p>
+                </div>
+            </a>
+
+            </div>
+    </main>
+
+    <footer class="bg-[#f5f5f7] py-16 mt-20 text-center px-6">
+        <div class="max-w-screen-xl mx-auto">
+            <p class="text-gray-400 text-xs md:text-sm">© 2026 Eric Justin. 保留所有權利。</p>
+            <div class="mt-4 flex justify-center gap-6 text-[10px] text-gray-400">
+                <a href="#" class="hover:underline">隱私權政策</a>
+                <a href="#" class="hover:underline">銷售條款</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
