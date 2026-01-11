@@ -87,7 +87,7 @@
             </div>
         </div>
         
-        <div class="mt-20 w-full max-w-5xl reveal px-4">
+        <div class="mt-20 w-full max-w-3xl reveal px-4">
             <img src="photo/30分鐘.png" 
                  class="w-full h-auto rounded-apple shadow-[0_40px_100px_rgba(0,0,0,0.6)] transform transition duration-1000 hover:scale-[1.02]">
         </div>
@@ -152,7 +152,6 @@
                 const { error } = await _supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: { 
-                        // redirectTo: window.location.origin + window.location.pathname,
                         persistSession: true // 強制持久化儲存 Session
                     }
                 });
@@ -174,8 +173,6 @@
             const authSection = document.getElementById('auth-section');
             
             _supabase.auth.onAuthStateChange((event, session) => {
-                console.log("Auth Event:", event); // 除錯觀察用
-
                 if (session && session.user) {
                     const user = session.user;
                     const avatar = user.user_metadata.avatar_url || 'photo/S__38223874.jpg';
@@ -189,7 +186,7 @@
                                     <p class="text-gray-500 text-[10px] truncate mt-1">${user.email}</p>
                                 </div>
                                 <div class="py-1 text-left">
-                                    <a href="orders.html" class="block px-5 py-3 text-white/80 text-[11px] hover:bg-white/10 transition">我的訂單紀錄</a>
+                                    <a href="order_center.html" class="block px-5 py-3 text-white/80 text-[11px] hover:bg-white/10 transition">我的訂單紀錄</a>
                                     <button onclick="logout()" class="w-full text-left px-5 py-3 text-red-400 text-[11px] hover:bg-white/10 transition font-medium">
                                         登出帳號
                                     </button>
@@ -198,7 +195,6 @@
                         </div>
                     `;
                 } else {
-                    // 若未登入，還原登入按鈕
                     authSection.innerHTML = `<button id="login-btn" onclick="loginWithGoogle()" class="hover:text-white transition">登入</button>`;
                 }
             });
