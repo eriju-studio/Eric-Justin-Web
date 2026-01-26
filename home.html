@@ -38,6 +38,7 @@
             position: fixed; width: 600px; height: 600px;
             background: radial-gradient(circle, rgba(212, 175, 55, 0.04) 0%, transparent 70%);
             border-radius: 50%; pointer-events: none; z-index: -1; filter: blur(60px);
+            will-change: transform;
         }
 
         .ig-ball {
@@ -59,12 +60,12 @@
         .ig-ball:hover svg { transform: rotate(10deg); }
 
         .floating-nav { 
-            background: rgba(255, 255, 255, 0.8) !important; 
-            backdrop-filter: blur(20px) saturate(160%) !important;
-            border: 1px solid rgba(0, 0, 0, 0.05) !important;
-            border-radius: 50px !important; margin-top: 20px;
+            background: rgba(255, 255, 255, 0.8); 
+            backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 50px; margin-top: 20px;
             width: 90%; max-width: 1100px; left: 50%; transform: translateX(-50%);
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.6s, margin-top 0.6s, background-color 0.6s;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
         }
 
@@ -89,7 +90,8 @@
         }
         .btn-luxury:hover { background: #000; transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
 
-        .reveal { opacity: 0; transform: translateY(40px); }
+        /* 重要修正：使用 visibility + opacity 防止跳閃並確保渲染 */
+        .reveal { opacity: 0; visibility: hidden; }
 
         .user-menu {
             opacity: 0; visibility: hidden; transform: scale(0.95) translateY(10px);
@@ -218,28 +220,107 @@
     </section>
 
     <footer class="py-24 text-center border-t border-slate-50">
-    <span class="text-2xl font-black tracking-tighter uppercase mb-6 block text-slate-900">Eriju</span>
-    
-    <div class="max-w-md mx-auto mb-10 px-6">
-        <p class="text-[10px] text-slate-400 leading-loose">
-            本網站為 Eriju 個人創作與技術展示專案。所列商品為測試性販售之原創作品，非公司行號營運。下單前請詳閱專案說明，參與即代表支持個人創作。
-        </p>
-    </div>
-
-    <p class="text-slate-300 text-[11px] tracking-[0.5em] uppercase">© 2026 Eriju Studio. All rights reserved.</p>
-</footer>
+        <span class="text-2xl font-black tracking-tighter uppercase mb-6 block text-slate-900">Eriju</span>
+        <div class="max-w-md mx-auto mb-10 px-6">
+            <p class="text-[10px] text-slate-400 leading-loose">
+                本網站為 Eriju 個人創作與技術展示專案。所列商品為測試性販售之原創作品，非公司行號營運。下單前請詳閱專案說明，參與即代表支持個人創作。
+            </p>
+        </div>
+        <p class="text-slate-300 text-[11px] tracking-[0.5em] uppercase">© 2026 Eriju Studio. All rights reserved.</p>
+    </footer>
 
     <script>
-        const lenis = new Lenis();
-        function raf(time) {
-            lenis.raf(time);
+        // 全域變數
+        let _supabase;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // 1. 初始化 Supabase (包在 Try Catch 裡確保不崩潰)
+            try {
+                _supabase = supabase.createClient('https://oikubhlwdbxrfhifqusn.supabase.co', 'sb_publishable_jwPs6RwbH4W4qg1ttjjZog_BcTN8VJy');
+                handleAuthUI();
+            } catch (e) {
+                console.error("Supabase Error:", e);
+            }
+
+            // 2. Lenis 平滑滾動
+            const lenis = new Lenis();
+            function raf(time) {
+                lenis.raf(time);
+                requestAnimationFrame(raf);
+            }
             requestAnimationFrame(raf);
-        }
-        requestAnimationFrame(raf);
 
-        const _supabase = supabase.createClient('https://oikubhlwdbxrfhifqusn.supabase.co', 'sb_publishable_jwPs6RwbH4W4qg1ttjjZog_BcTN8VJy');
+            // 3. Vercel Analytics
+            if (window.va) { window.va.track('ViewHomePage'); }
 
+            // 4. 其他 UI 初始化
+            checkCartDot();
+
+            // 5. GSAP 動畫核心邏輯
+            gsap.registerPlugin(ScrollTrigger);
+
+            // 修正：使用 autoAlpha 確保 visibility 同時切換
+            gsap.utils.toArray(".reveal").forEach(el => {
+                gsap.to(el, { 
+                    autoAlpha: 1, 
+                    y: 0, 
+                    duration: 1.5, 
+                    ease: "expo.out", 
+                    scrollTrigger: { 
+                        trigger: el, 
+                        start: "top 92%",
+                        toggleActions: "play none none none"
+                    } 
+                });
+            });
+
+            // 導航列變化
+            ScrollTrigger.create({
+                start: "top -20",
+                onEnter: () => gsap.to(".floating-nav", { 
+                    marginTop: "0", 
+                    width: "100%", 
+                    borderRadius: "0", 
+                    backgroundColor: "white", 
+                    duration: 0.5 
+                }),
+                onLeaveBack: () => gsap.to(".floating-nav", { 
+                    marginTop: "20px", 
+                    width: "90%", 
+                    borderRadius: "50px", 
+                    backgroundColor: "rgba(255,255,255,0.8)", 
+                    duration: 0.5 
+                })
+            });
+
+            // 背景發光與 IG 球移動
+            const ball = document.getElementById('ig-floating-ball');
+            document.addEventListener('mousemove', (e) => {
+                gsap.to("#cursor-glow", { 
+                    x: e.clientX - 300, 
+                    y: e.clientY - 300, 
+                    duration: 1.5, 
+                    ease: "power2.out" 
+                });
+                
+                if (ball) {
+                    const rect = ball.getBoundingClientRect();
+                    const ballX = rect.left + rect.width / 2;
+                    const ballY = rect.top + rect.height / 2;
+                    const dist = Math.hypot(e.clientX - ballX, e.clientY - ballY);
+                    
+                    if (dist < 250) {
+                        gsap.to(ball, { x: (e.clientX - ballX) * 0.3, y: (e.clientY - ballY) * 0.3, duration: 0.5 });
+                    } else {
+                        gsap.to(ball, { x: 0, y: 0, duration: 0.5 });
+                    }
+                }
+            });
+        });
+
+        // 功能函數
         async function loginWithGoogle() {
+            if (!_supabase) return;
             await _supabase.auth.signInWithOAuth({ 
                 provider: 'google', 
                 options: { redirectTo: window.location.origin + '/index.html' } 
@@ -248,6 +329,8 @@
 
         function handleAuthUI() {
             const authSection = document.getElementById('auth-section');
+            if (!authSection || !_supabase) return;
+
             _supabase.auth.onAuthStateChange((event, session) => {
                 if (session?.user) {
                     const avatar = session.user.user_metadata.avatar_url || 'photo/S__38223874.jpg';
@@ -282,52 +365,9 @@
 
         function checkCartDot() {
             const cart = JSON.parse(localStorage.getItem('ej_cart') || '[]');
-            if (cart.length > 0) document.getElementById('cart-dot')?.classList.remove('hidden');
+            const dot = document.getElementById('cart-dot');
+            if (cart.length > 0 && dot) dot.classList.remove('hidden');
         }
-
-        gsap.registerPlugin(ScrollTrigger);
-
-        window.addEventListener('DOMContentLoaded', () => {
-            // Vercel 事件追蹤：首頁瀏覽
-            if (window.va) {
-                window.va.track('ViewHomePage');
-            }
-
-            handleAuthUI();
-            checkCartDot();
-
-            gsap.utils.toArray(".reveal").forEach(el => {
-                gsap.to(el, { 
-                    opacity: 1, 
-                    y: 0, 
-                    duration: 1.5, 
-                    ease: "expo.out", 
-                    scrollTrigger: { trigger: el, start: "top 92%" } 
-                });
-            });
-
-            ScrollTrigger.create({
-                start: "top -20",
-                onEnter: () => gsap.to(".floating-nav", { marginTop: "0", width: "100%", borderRadius: "0", backgroundColor: "white", duration: 0.5 }),
-                onLeaveBack: () => gsap.to(".floating-nav", { marginTop: "20px", width: "90%", borderRadius: "50px", backgroundColor: "rgba(255,255,255,0.8)", duration: 0.5 })
-            });
-
-            const ball = document.getElementById('ig-floating-ball');
-            document.addEventListener('mousemove', (e) => {
-                gsap.to("#cursor-glow", { x: e.clientX - 300, y: e.clientY - 300, duration: 2, ease: "power2.out" });
-                
-                const rect = ball.getBoundingClientRect();
-                const ballX = rect.left + rect.width / 2;
-                const ballY = rect.top + rect.height / 2;
-                const dist = Math.hypot(e.clientX - ballX, e.clientY - ballY);
-                
-                if (dist < 200) {
-                    gsap.to(ball, { x: (e.clientX - ballX) * 0.3, y: (e.clientY - ballY) * 0.3, duration: 0.5 });
-                } else {
-                    gsap.to(ball, { x: 0, y: 0, duration: 0.5 });
-                }
-            });
-        });
     </script>
 </body>
 </html>
