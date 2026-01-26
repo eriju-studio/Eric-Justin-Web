@@ -3,49 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>訂單管理 | Eriju Studio</title>
+    <title>Eriju | 訂單管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
     <script src="https://unpkg.com/@studio-freight/lenis@1.0.33/dist/lenis.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=Noto+Sans+TC:wght@300;400;700;900&display=swap');
-        
-        :root { 
-            --accent: #0f172a; 
-            --bg-light: #fdfdfd;
-        }
-
+        :root { --accent: #0f172a; --bg-light: #fdfdfd; }
         body { 
-            background-color: var(--bg-light);
-            color: #334155;
+            background-color: var(--bg-light); color: #334155; 
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            letter-spacing: -0.01em;
+            letter-spacing: -0.01em; padding-top: 80px; overflow-x: hidden;
         }
 
-        /* 頂級導覽列 */
+        /* 全站統一導覽列 */
         .floating-nav { 
-            background: rgba(255, 255, 255, 0.8) !important; 
-            backdrop-filter: blur(20px) saturate(160%) !important;
-            border: 1px solid rgba(0, 0, 0, 0.05) !important;
-            border-radius: 50px !important; margin-top: 20px;
+            background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 50px; margin-top: 20px;
             width: 90%; max-width: 1100px; left: 50%; transform: translateX(-50%);
-            z-index: 1000;
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1000;
         }
+        #mobile-menu.active { opacity: 1 !important; pointer-events: auto !important; }
 
+        /* 使用者選單 */
         .user-menu {
             opacity: 0; visibility: hidden; transform: scale(0.95) translateY(10px);
             position: absolute; right: 0; top: 60px; width: 240px;
             background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.12);
-            border: 1px solid rgba(0,0,0,0.05); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1001;
+            border: 1px solid rgba(0,0,0,0.05); transition: all 0.3s; z-index: 1001;
         }
         #auth-section:hover .user-menu { opacity: 1; visibility: visible; transform: scale(1) translateY(0); }
 
+        /* 訂單卡片設計 */
         .tab-group { background: #f1f5f9; padding: 4px; border-radius: 16px; display: inline-flex; }
-        .tab-btn { 
-            padding: 8px 24px; font-size: 12px; font-weight: 900; color: #94a3b8; 
-            transition: all 0.4s; border-radius: 12px; letter-spacing: 0.05em;
-        }
+        .tab-btn { padding: 8px 24px; font-size: 11px; font-weight: 900; color: #94a3b8; transition: all 0.4s; border-radius: 12px; letter-spacing: 0.05em; }
         .tab-btn.active { background: white; color: #0f172a; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
         .order-card { 
@@ -53,7 +46,7 @@
             transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden;
             box-shadow: 0 4px 30px rgba(0,0,0,0.02);
         }
-        .order-card:hover { border-color: rgba(0,0,0,0.08); transform: translateY(-2px); box-shadow: 0 20px 40px rgba(0,0,0,0.04); }
+        .order-card:hover { border-color: rgba(0,0,0,0.08); transform: translateY(-2px); }
         .order-card.active { border-color: #0f172a; }
 
         .detail-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; opacity: 0; }
@@ -65,17 +58,15 @@
 
         .action-btn { 
             background: #0f172a; color: white; padding: 16px; border-radius: 20px; 
-            font-size: 12px; font-weight: 900; letter-spacing: 0.1em; width: 100%;
-            transition: all 0.3s;
+            font-size: 12px; font-weight: 900; letter-spacing: 0.1em; width: 100%; transition: all 0.3s;
         }
         .action-btn:hover { background: #334155; transform: scale(1.01); }
-        
         .finishing { filter: grayscale(1); opacity: 0.5; pointer-events: none; }
     </style>
 </head>
-<body class="pt-32 pb-20">
+<body>
 
-    <nav class="floating-nav fixed top-0 h-[70px] px-8 flex items-center justify-between">
+    <nav class="floating-nav fixed top-0 px-6 md:px-8 h-[70px] flex items-center justify-between">
         <a href="index.html" class="flex items-center group">
             <div class="w-10 h-10 rounded-xl overflow-hidden shadow-sm transition-all group-hover:rotate-6">
                 <img src="photo/S__38223874.jpg" alt="Logo" class="w-full h-full object-cover">
@@ -83,21 +74,42 @@
             <span class="ml-4 text-xl font-black tracking-tighter text-slate-900 uppercase">Eriju</span>
         </a>
         
-        <div class="flex items-center gap-8 text-[13px] font-bold tracking-widest uppercase">
-            <a href="catalog.html" class="text-slate-400 hover:text-slate-900 transition">選購</a>
-            <a href="about.html" class="text-slate-400 hover:text-slate-900 transition">關於</a>
-            <div id="auth-section" class="relative"></div>
-            <a href="cart.html" class="relative group p-2">
-                <span class="text-xl">🛒</span>
-                <span id="cart-dot" class="hidden absolute top-0 right-0 w-2.5 h-2.5 bg-slate-900 border-2 border-white rounded-full"></span>
+        <div class="flex items-center gap-4 md:gap-8">
+            <div class="hidden md:flex items-center gap-8 text-[13px] font-bold tracking-widest uppercase">
+                <a href="catalog.html" class="text-slate-400 hover:text-slate-900 transition">選購</a>
+                <a href="about.html" class="text-slate-400 hover:text-slate-900 transition">關於</a>
+            </div>
+
+            <a href="cart.html" class="text-slate-900 text-xl relative">🛒
+                <span id="cart-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-slate-900 border-2 border-white rounded-full"></span>
             </a>
+
+            <div id="auth-section" class="hidden md:block relative"></div>
+
+            <button onclick="toggleMobileMenu()" class="block md:hidden text-slate-900">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
         </div>
     </nav>
 
-    <main class="max-w-3xl mx-auto px-6">
-        <div class="mb-16">
+    <div id="mobile-menu" class="fixed inset-0 bg-white/95 backdrop-blur-xl z-[2000] flex flex-col items-center justify-center gap-8 opacity-0 pointer-events-none transition-all duration-500">
+        <button onclick="toggleMobileMenu()" class="absolute top-8 right-8 text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <div id="user-info-mobile" class="text-center"></div>
+        <a href="catalog.html" class="text-4xl font-black text-slate-900 uppercase" onclick="toggleMobileMenu()">選購系列</a>
+        <a href="cart.html" class="text-4xl font-black text-slate-900 uppercase" onclick="toggleMobileMenu()">購物袋</a>
+        <button onclick="_supabase.auth.signOut().then(()=>location.reload())" class="mt-8 text-red-400 font-bold uppercase tracking-widest">登出帳號</button>
+    </div>
+
+    <main class="max-w-3xl mx-auto px-6 pt-12">
+        <div class="mb-12 md:mb-16">
             <p class="text-[10px] font-black tracking-[0.4em] text-slate-300 uppercase mb-4">MANAGEMENT</p>
-            <div class="flex items-end justify-between">
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <h1 class="text-5xl font-black tracking-tighter text-slate-900">我的訂單存檔</h1>
                 <div class="tab-group">
                     <button onclick="switchTab('active')" id="tab-active" class="tab-btn active">進行中</button>
@@ -119,9 +131,11 @@
         let allOrders = [];
         let currentView = 'active';
 
-        const lenis = new Lenis();
-        function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
-        requestAnimationFrame(raf);
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('active');
+            document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+        }
 
         _supabase.auth.onAuthStateChange(async (event, session) => {
             if (session) {
@@ -135,22 +149,24 @@
 
         function handleAuthUI(session) {
             const authSection = document.getElementById('auth-section');
+            const userM = document.getElementById('user-info-mobile');
             const avatar = session.user.user_metadata.avatar_url || 'photo/S__38223874.jpg';
+            const name = session.user.user_metadata.full_name || 'Premium User';
+
             authSection.innerHTML = `
                 <div class="relative group">
                     <div class="relative cursor-pointer">
                         <img src="${avatar}" class="w-9 h-9 rounded-xl ring-4 ring-white shadow-sm transition-all group-hover:rotate-3">
-                        <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>
                     </div>
                     <div class="user-menu p-3">
                         <div class="px-4 py-3 bg-slate-50 rounded-2xl mb-2">
-                            <p class="text-slate-900 text-[10px] font-black uppercase tracking-widest">${session.user.user_metadata.full_name || '會員'}</p>
-                            <p class="text-slate-400 text-[9px] truncate">${session.user.email}</p>
+                            <p class="text-slate-900 text-[10px] font-black uppercase tracking-widest truncate">${name}</p>
                         </div>
-                        <a href="catalog.html" class="flex items-center gap-3 p-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all">✨ 新品系列</a>
-                        <button onclick="_supabase.auth.signOut().then(()=>location.reload())" class="w-full text-left flex items-center gap-3 p-3 text-[11px] font-bold text-red-400 hover:bg-red-50 rounded-xl transition-all">🚪 登出帳號</button>
+                        <a href="catalog.html" class="block p-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 rounded-xl transition-all">✨ 新品系列</a>
+                        <button onclick="_supabase.auth.signOut().then(()=>location.reload())" class="w-full text-left p-3 text-[11px] font-bold text-red-400 hover:bg-red-50 rounded-xl transition-all">🚪 登出帳號</button>
                     </div>
                 </div>`;
+            userM.innerHTML = `<img src="${avatar}" class="w-20 h-20 rounded-2xl mx-auto shadow-xl border-4 border-white mb-2"><p class="font-black text-slate-900">${name}</p>`;
         }
 
         async function fetchData() {
@@ -178,50 +194,39 @@
                 const items = order.items || [];
                 const firstItem = items[0] || {};
                 const statusInfo = getStatusStyle(order.status);
-
                 return `
                 <div class="order-card" id="card-${order.id}" onclick="this.classList.toggle('active')">
-                    <div class="p-10 flex items-center justify-between cursor-pointer">
-                        <div class="flex items-center gap-8">
-                            <div class="relative">
-                                <img src="${firstItem.image}" onerror="this.src='photo/S__38223874.jpg'" class="w-20 h-20 object-cover rounded-[24px] shadow-sm">
-                                ${items.length > 1 ? `<div class="absolute -top-3 -right-3 bg-white text-slate-900 text-[10px] w-7 h-7 flex items-center justify-center rounded-full border border-slate-100 font-black shadow-sm">+${items.length-1}</div>` : ''}
+                    <div class="p-6 md:p-10 flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center gap-4 md:gap-8">
+                            <div class="relative flex-shrink-0">
+                                <img src="${firstItem.image}" onerror="this.src='photo/S__38223874.jpg'" class="w-16 h-16 md:w-20 md:h-20 object-cover rounded-[20px] shadow-sm">
+                                ${items.length > 1 ? `<div class="absolute -top-2 -right-2 bg-slate-900 text-white text-[9px] w-6 h-6 flex items-center justify-center rounded-full font-black">+${items.length-1}</div>` : ''}
                             </div>
                             <div>
-                                <h3 class="font-black text-slate-900 text-xl tracking-tighter mb-1">${firstItem.name || '作品內容'}</h3>
+                                <h3 class="font-black text-slate-900 text-lg md:text-xl tracking-tighter mb-1 truncate max-w-[150px] md:max-w-none">${firstItem.name || '作品內容'}</h3>
                                 <div class="flex items-center">
                                     <span class="status-dot ${statusInfo.bg}"></span>
                                     <span class="status-text ${statusInfo.text}">${statusInfo.label}</span>
-                                    <span class="mx-3 w-[1px] h-3 bg-slate-200"></span>
-                                    <span class="text-[10px] text-slate-300 font-bold uppercase tracking-widest">${new Date(order.created_at).toLocaleDateString('zh-TW')}</span>
                                 </div>
                             </div>
                         </div>
                         <div class="text-right">
-                            <p class="font-black text-slate-900 text-2xl tracking-tighter">NT$ ${order.total_amount.toLocaleString()}</p>
-                            <p class="text-[9px] font-bold text-slate-300 uppercase mt-1 tracking-widest">訂單總額</p>
+                            <p class="font-black text-slate-900 text-xl md:text-2xl tracking-tighter">NT$ ${order.total_amount.toLocaleString()}</p>
                         </div>
                     </div>
-                    
                     <div class="detail-wrapper">
-                        <div class="detail-content px-10 pb-10">
+                        <div class="detail-content px-6 md:px-10 pb-10">
                             <div class="h-[1px] bg-slate-50 w-full mb-8"></div>
-                            <div class="grid md:grid-cols-2 gap-12 mb-10">
+                            <div class="grid md:grid-cols-2 gap-10 mb-10">
                                 <div>
                                     <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">配送資訊</p>
                                     <p class="text-sm font-black text-slate-900">${order.user_name}</p>
-                                    <p class="text-xs text-slate-500 mt-1">${order.user_phone}</p>
-                                    <p class="text-xs text-slate-400 mt-3 leading-relaxed">${order.shipping_address}</p>
+                                    <p class="text-xs text-slate-400 mt-2">${order.shipping_address}</p>
                                 </div>
                                 <div>
-                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">商品清單</p>
-                                    <div class="space-y-3">
-                                        ${items.map(i => `
-                                            <div class="flex justify-between text-xs font-bold">
-                                                <span class="text-slate-500">${i.name} <span class="text-slate-300 font-medium">× ${i.qty}</span></span>
-                                                <span class="text-slate-900">NT$ ${(i.price * i.qty).toLocaleString()}</span>
-                                            </div>
-                                        `).join('')}
+                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">清單</p>
+                                    <div class="space-y-2">
+                                        ${items.map(i => `<div class="flex justify-between text-xs font-bold"><span class="text-slate-500">${i.name} × ${i.qty}</span><span class="text-slate-900">NT$ ${(i.price * i.qty).toLocaleString()}</span></div>`).join('')}
                                     </div>
                                 </div>
                             </div>
@@ -243,33 +248,35 @@
         }
 
         function renderAction(order) {
-            if (order.status === 'delivered') {
-                return `<button onclick="event.stopPropagation(); finishOrder('${order.id}')" class="action-btn">確認收貨並存檔</button>`;
-            }
-            if (order.status === 'completed') {
-                return `<p class="text-center text-slate-300 text-[10px] font-black tracking-[0.3em] uppercase py-4">此訂單已完成並歸檔</p>`;
-            }
-            return `<div class="text-center py-6 bg-slate-50 rounded-[24px] border border-dashed border-slate-200">
-                        <p class="text-slate-400 text-[9px] font-black tracking-[0.4em] uppercase">職人正為您準備包裹中</p>
-                    </div>`;
+            if (order.status === 'delivered') return `<button onclick="event.stopPropagation(); finishOrder('${order.id}')" class="action-btn">確認收貨並存檔</button>`;
+            if (order.status === 'completed') return `<p class="text-center text-slate-300 text-[10px] font-black tracking-[0.3em] uppercase py-4">此訂單已完成歸檔</p>`;
+            return `<div class="text-center py-6 bg-slate-50 rounded-[24px] border border-dashed border-slate-200"><p class="text-slate-400 text-[9px] font-black tracking-[0.4em] uppercase">職人正為您準備包裹中</p></div>`;
         }
 
         async function finishOrder(id) {
-            if (!confirm('確認完成此訂單並移至存檔嗎？')) return;
+            if (!confirm('確認收貨嗎？')) return;
             const card = document.getElementById(`card-${id}`);
             card.classList.add('finishing');
             const { error } = await _supabase.from('orders').update({ status: 'completed' }).eq('id', id);
-            if (!error) {
-                setTimeout(() => fetchData(), 400);
-            } else {
-                card.classList.remove('finishing');
-            }
+            if (!error) fetchData(); else card.classList.remove('finishing');
         }
 
         function checkCartDot() {
-            const cart = JSON.parse(localStorage.getItem('ej_cart') || '[]');
-            if (cart.length > 0) document.getElementById('cart-dot')?.classList.remove('hidden');
+            if (JSON.parse(localStorage.getItem('ej_cart') || '[]').length > 0) document.getElementById('cart-dot')?.classList.remove('hidden');
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lenis = new Lenis();
+            function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+            requestAnimationFrame(raf);
+
+            gsap.registerPlugin(ScrollTrigger);
+            ScrollTrigger.create({
+                start: "top -20",
+                onEnter: () => gsap.to(".floating-nav", { marginTop: "10px", width: "95%", backgroundColor: "rgba(255,255,255,0.75)", duration: 0.6 }),
+                onLeaveBack: () => gsap.to(".floating-nav", { marginTop: "20px", width: "90%", backgroundColor: "rgba(255,255,255,0.4)", duration: 0.6 })
+            });
+        });
     </script>
 </body>
 </html>
