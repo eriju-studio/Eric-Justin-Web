@@ -11,6 +11,10 @@
     
     <style>
         :root { --bg-light: #fdfdfd; }
+        /* 修正 1：強制恢復平滑滾動 */
+        html { 
+            scroll-behavior: smooth !important; 
+        }
         body { 
             background-color: var(--bg-light); color: #334155; 
             font-family: 'Inter', -apple-system, sans-serif;
@@ -164,6 +168,7 @@
             await _supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
         }
 
+        // 修正 3：更強大的登錄監測
         function handleAuthUI() {
             _supabase.auth.onAuthStateChange((event, session) => {
                 const authS = document.getElementById('auth-section');
@@ -172,6 +177,12 @@
                 const loginAlert = document.getElementById('login-alert');
 
                 if (session?.user) {
+                    // 登錄成功：強制隱藏提示框
+                    if (loginAlert) {
+                        loginAlert.classList.add('hidden');
+                        loginAlert.style.setProperty('display', 'none', 'important');
+                    }
+
                     const { avatar_url, full_name } = session.user.user_metadata;
                     authS.innerHTML = `<div class="relative group">
                         <img src="${avatar_url}" class="w-9 h-9 rounded-xl ring-4 ring-white shadow-sm cursor-pointer hover:rotate-3 transition">
@@ -183,10 +194,14 @@
                     </div>`;
                     userM.innerHTML = `<img src="${avatar_url}" class="w-20 h-20 rounded-2xl mx-auto shadow-xl border-4 border-white mb-2"><p class="font-black text-slate-900">${full_name}</p>`;
                     authM.innerHTML = `<button onclick="_supabase.auth.signOut().then(()=>location.reload())" class="text-red-400 font-bold uppercase tracking-widest text-sm">登出帳號</button>`;
-                    loginAlert?.classList.add('hidden');
+                    
                     if (!document.getElementById('cust-name').value) document.getElementById('cust-name').value = full_name;
                 } else {
-                    loginAlert?.classList.remove('hidden');
+                    // 未登錄：顯示提示框
+                    if (loginAlert) {
+                        loginAlert.classList.remove('hidden');
+                        loginAlert.style.setProperty('display', 'flex', 'important');
+                    }
                 }
             });
         }
@@ -246,6 +261,7 @@
             document.getElementById('cart-dot')?.classList.add('hidden');
         }
 
+        // 修正 4：對接雲端稽核版通知
         async function processOrder() {
             const name = document.getElementById('cust-name').value.trim();
             const phone = document.getElementById('cust-phone').value.trim();
@@ -257,7 +273,7 @@
 
             const btn = document.getElementById('checkout-btn');
             btn.disabled = true; 
-            btn.innerText = "Processing...";
+            btn.innerText = "驗證中...";
 
             const totalAmount = myCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
             const orderData = {
@@ -274,24 +290,19 @@
             const { data, error } = await _supabase.from('orders').insert([orderData]).select().single();
             
             if (error) { 
-                alert("下單失敗"); 
+                console.error("DB Error:", error);
+                alert("下單失敗：" + error.message); 
                 btn.disabled = false; 
-                btn.innerText = "Place Order"; 
+                btn.innerText = "送出訂單"; 
             } else { 
-                // 2. 呼叫 Edge Function 發送 DC 通知
+                // 2. 呼叫 Edge Function (只傳 order_id)
                 try {
-                    // 請確認你的 Supabase Function 名稱為 'notify-discord'
+                    console.log("正在發送稽核通知...");
                     await _supabase.functions.invoke('notify-discord', {
-                        body: { 
-                            orderId: data.id,
-                            name: name,
-                            phone: phone,
-                            total: totalAmount,
-                            items: myCart.map(i => `${i.name} (x${i.qty})`).join(', ')
-                        }
+                        body: { order_id: data.id } 
                     });
                 } catch (err) {
-                    console.error("DC 通知發送失敗:", err);
+                    console.error("DC 通知發送失敗，但訂單已成立:", err);
                 }
 
                 localStorage.removeItem('ej_cart'); 
@@ -300,14 +311,24 @@
             }
         }
 
+        // 修正 5：平滑滾動與初始化順序
         window.addEventListener('DOMContentLoaded', () => {
             handleAuthUI();
             initCart();
+            
+            // 註冊 GSAP 與平滑滾動動畫
             gsap.registerPlugin(ScrollTrigger);
-            ScrollTrigger.create({
-                start: "top -20",
-                onEnter: () => gsap.to(".floating-nav", { marginTop: "10px", width: "95%", backgroundColor: "rgba(255,255,255,0.75)", duration: 0.6 }),
-                onLeaveBack: () => gsap.to(".floating-nav", { marginTop: "20px", width: "90%", backgroundColor: "rgba(255,255,255,0.4)", duration: 0.6 })
+            
+            gsap.to(".floating-nav", {
+                scrollTrigger: {
+                    start: "top -20",
+                    toggleActions: "play none none reverse",
+                },
+                marginTop: "10px",
+                width: "95%",
+                backgroundColor: "rgba(255,255,255,0.75)",
+                duration: 0.6,
+                ease: "power2.out"
             });
         });
     </script>
