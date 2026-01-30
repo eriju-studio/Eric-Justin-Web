@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eriju | 官方網站</title>
+    
+    <script defer src="/_vercel/insights/script.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/@studio-freight/lenis@1.0.33/dist/lenis.min.js"></script>
+    
+    <style>
+        :root { 
+            --accent: #1e293b; 
+            --gold: #d4af37;
+            --text-main: #334155;
+            --bg-light: #fdfdfd;
+        }
+        
+        /* Lenis 平滑滾動優化 */
+        html.lenis { height: auto; }
+        .lenis.lenis-smooth { scroll-behavior: auto !important; }
+        .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+        .lenis.lenis-stopped { overflow: hidden; }
+
+        body { 
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            overflow-x: hidden;
+            letter-spacing: -0.02em;
+        }
+
+        /* 跟隨滑鼠的環境發光 */
+        .glow-bg {
+            position: fixed; width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.04) 0%, transparent 70%);
+            border-radius: 50%; pointer-events: none; z-index: -1; filter: blur(60px);
+            will-change: transform;
+        }
+
+        /* IG 懸浮球 */
+        .ig-ball {
+            position: fixed; bottom: 40px; right: 40px; width: 70px; height: 70px;
+            background: white; border-radius: 50%;
+            display: grid !important; place-items: center !important; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1000; cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .ig-ball svg {
+            width: 34px !important; height: 34px !important;
+            display: block; fill: url(#ig-grad-fill);
+        }
+        .ig-ball:hover { transform: scale(1.1); box-shadow: 0 15px 40px rgba(225, 48, 108, 0.2); }
+
+        /* 導覽列核心樣式 */
+        /* 導覽列核心樣式 - 初始設為較清透的半透明 */
+        .floating-nav { 
+            background: rgba(255, 255, 255, 0.4); /* 初始 40% 透明 */
+            backdrop-filter: blur(20px) saturate(160%);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 50px; 
+            margin-top: 20px;
+            width: 90%; max-width: 1100px; left: 50%; transform: translateX(-50%);
+            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.6s, margin-top 0.6s, background-color 0.6s;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
+        }
+
+        /* 內容字體樣式 */
+        .hero-title { color: #0f172a; font-weight: 900; letter-spacing: -0.06em; line-height: 0.9; }
+        .gold-tag {
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            border: 1px solid #e2e8f0; color: #64748b; padding: 4px 16px;
+            border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+        }
+
+        /* 卡片設計 */
+        .release-card {
+            background: #ffffff; border-radius: 40px; border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.03); overflow: hidden;
+        }
+        .release-card:hover { transform: translateY(-12px); box-shadow: 0 40px 80px rgba(0,0,0,0.08); }
+
+        .btn-luxury {
+            background: var(--accent); color: #ffffff; padding: 14px 40px;
+            border-radius: 12px; font-weight: 600; transition: all 0.4s;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-luxury:hover { background: #000; transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+
+        /* GSAP 揭露動畫初始化 */
+        .reveal { opacity: 0; visibility: hidden; }
+
+        /* 會員選單 */
+        .user-menu {
+            opacity: 0; visibility: hidden; transform: scale(0.95) translateY(10px);
+            position: absolute; right: 0; top: 60px; width: 240px;
+            background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+            border: 1px solid rgba(0,0,0,0.05); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1001;
+        }
+        #auth-section:hover .user-menu { opacity: 1; visibility: visible; transform: scale(1) translateY(0); }
+    </style>
+</head>
+<body class="pt-24">
+
+    <div class="glow-bg" id="cursor-glow"></div>
+
+    <a href="https://www.instagram.com/eriju_atelier" target="_blank" class="ig-ball reveal" id="ig-floating-ball">
+        <svg viewBox="0 0 24 24">
+            <defs>
+                <linearGradient id="ig-grad-fill" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#f09433;" /><stop offset="50%" style="stop-color:#dc2743;" /><stop offset="100%" style="stop-color:#bc1888;" />
+                </linearGradient>
+            </defs>
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c.796 0 1.441.645 1.441 1.44s-.645 1.44-1.441 1.44c-.795 0-1.439-.645-1.439-1.44s.644-1.44 1.439-1.44z"/></svg>
+    </a>
+
+    <nav class="floating-nav fixed top-0 z-[1000] h-[70px] px-8 flex items-center justify-between">
+        <a href="index.html" class="flex items-center group">
+            <div class="w-10 h-10 rounded-xl overflow-hidden shadow-sm transition-all group-hover:rotate-6">
+                <img src="photo/S__38223874.jpg" alt="Logo" class="w-full h-full object-cover">
+            </div>
+            <span class="ml-4 text-xl font-black tracking-tighter text-slate-900 uppercase">Eriju</span>
+        </a>
+        <div class="flex items-center gap-8 text-[13px] font-bold tracking-widest uppercase">
+            <a href="catalog.html" class="text-slate-400 hover:text-slate-900 transition">選購</a>
+            <a href="about.html" class="text-slate-400 hover:text-slate-900 transition">關於</a>
+            <div id="auth-section" class="relative">
+                <button id="login-btn" onclick="loginWithGoogle()" class="text-slate-400 hover:text-slate-900 transition">登錄</button>
+            </div>
+            <a href="cart.html" class="relative group p-2">
+                <span class="text-xl">🛒</span>
+                <span id="cart-dot" class="hidden absolute top-0 right-0 w-2.5 h-2.5 bg-slate-900 border-2 border-white rounded-full"></span>
+            </a>
+        </div>
+    </nav>
+
+    <section class="relative min-h-[80vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] -z-10 opacity-40"></div>
+        <div class="reveal max-w-4xl">
+            <div class="gold-tag mx-auto w-fit mb-8">OFFICIAL RELEASE</div>
+            <h1 class="hero-title text-7xl md:text-[140px] mb-8">02 / 04</h1>
+            <p class="text-slate-400 text-xl md:text-2xl max-w-2xl mx-auto mb-12 font-medium leading-tight">正式啟程。這不只是發售，而是一場關於生活質感的重新校準。</p>
+            <div class="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                <a href="catalog.html" class="btn-luxury">立即預購</a>
+                <span class="text-slate-300 font-mono tracking-tighter">EST. 2026 / TAIWAN</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h2 class="text-5xl font-black tracking-tighter mb-4 reveal uppercase">新品系列</h2>
+            <div class="w-12 h-1 bg-slate-900 mx-auto mb-24 reveal"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-16">
+                <div class="reveal release-card group cursor-pointer" onclick="location.href='catalog.html'">
+                    <div class="aspect-[4/5] overflow-hidden bg-slate-50 relative">
+                        <img src="photo/仍然.png" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
+                            <div class="bg-white text-slate-900 px-8 py-4 rounded-full font-bold shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">立即查看</div>
+                        </div>
+                    </div>
+                    <div class="p-10 text-left flex justify-between items-end">
+                        <div class="flex-1">
+                            <h3 class="text-3xl font-black mb-3 text-slate-900">可愛小卡系列</h3>
+                            <p class="text-slate-400 font-medium">極致質感，卻不失溫度。2月4日同步解鎖。</p>
+                        </div>
+                        <div class="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center text-2xl group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 transform group-hover:translate-x-2">→</div>
+                    </div>
+                </div>
+
+                <div class="reveal release-card group cursor-pointer" onclick="location.href='catalog.html'">
+                    <div class="aspect-[4/5] overflow-hidden bg-slate-50 relative">
+                        <img src="photo/S__38223874.jpg" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110">
+                        <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
+                            <div class="bg-white text-slate-900 px-8 py-4 rounded-full font-bold shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">立即查看</div>
+                        </div>
+                    </div>
+                    <div class="p-10 text-left flex justify-between items-end">
+                        <div class="flex-1">
+                            <h3 class="text-3xl font-black mb-3 text-slate-900">專業聲學配飾</h3>
+                            <p class="text-slate-400 font-medium">為 AirPods Pro 量身打造的質感盔甲。</p>
+                        </div>
+                        <div class="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center text-2xl group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 transform group-hover:translate-x-2">→</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-24 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="reveal relative overflow-hidden rounded-[60px] bg-slate-900 min-h-[500px] flex items-center group">
+                <div class="absolute inset-0 opacity-50">
+                    <img src="photo/S__38223874.jpg" class="w-full h-full object-cover scale-110 transition-transform duration-[2s] group-hover:scale-100">
+                </div>
+                <div class="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent"></div>
+                <div class="relative z-10 p-12 md:p-24 max-w-2xl">
+                    <span class="text-orange-500 font-black text-xs tracking-[0.4em] uppercase mb-6 block">介紹</span>
+                    <h2 class="text-white text-5xl md:text-6xl font-black tracking-tighter mb-8 leading-tight">關於 Eriju<br>的不妥協。</h2>
+                    <a href="about.html" class="inline-flex items-center gap-4 text-white font-bold group/link">
+                        <span class="border-b-2 border-white/30 pb-1 group-hover/link:border-white transition-all">探索品牌故事</span>
+                        <div class="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-slate-900 transition-all">→</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-24 text-center border-t border-slate-50">
+        <span class="text-2xl font-black tracking-tighter uppercase mb-6 block text-slate-900">Eriju</span>
+        <div class="max-w-md mx-auto mb-10 px-6">
+            <p class="text-[10px] text-slate-400 leading-loose">
+                本網站為 Eriju 個人創作與技術展示專案。所列商品為測試性販售之原創作品，非公司行號營運。下單前請詳閱專案說明，參與即代表支持個人創作。
+            </p>
+        </div>
+        <p class="text-slate-300 text-[11px] tracking-[0.5em] uppercase">© 2026 Eriju Studio. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let _supabase;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // 1. 初始化 Supabase
+            try {
+                _supabase = supabase.createClient('https://oikubhlwdbxrfhifqusn.supabase.co', 'sb_publishable_jwPs6RwbH4W4qg1ttjjZog_BcTN8VJy');
+                handleAuthUI();
+            } catch (e) {
+                console.error("Supabase Error:", e);
+            }
+
+            // 2. Lenis 平滑滾動
+            const lenis = new Lenis();
+            function raf(time) {
+                lenis.raf(time);
+                requestAnimationFrame(raf);
+            }
+            requestAnimationFrame(raf);
+
+            // 3. UI 初始化
+            checkCartDot();
+            gsap.registerPlugin(ScrollTrigger);
+
+            // 4. Reveal 動畫
+            gsap.utils.toArray(".reveal").forEach(el => {
+                gsap.to(el, { 
+                    autoAlpha: 1, 
+                    y: 0, 
+                    duration: 1.5, 
+                    ease: "expo.out", 
+                    scrollTrigger: { 
+                        trigger: el, 
+                        start: "top 92%",
+                        toggleActions: "play none none none"
+                    } 
+                });
+            });
+
+                        // 5. 導覽列變化：修正滾動後顏色，使其保持透明不變純白
+            ScrollTrigger.create({
+                start: "top -20",
+                onEnter: () => gsap.to(".floating-nav", { 
+                    marginTop: "10px", 
+                    width: "95%", 
+                    borderRadius: "50px", 
+                    // 關鍵修正：滾動後設為 0.75 透明度，而非 white
+                    backgroundColor: "rgba(255, 255, 255, 0.75)", 
+                    duration: 0.6,
+                    ease: "expo.out"
+                }),
+                onLeaveBack: () => gsap.to(".floating-nav", { 
+                    marginTop: "20px", 
+                    width: "90%", 
+                    borderRadius: "50px", 
+                    // 關鍵修正：滾回頂部設為 0.4 透明度
+                    backgroundColor: "rgba(255, 255, 255, 0.4)", 
+                    duration: 0.6,
+                    ease: "expo.out"
+                })
+            });
+
+            // 6. 滑鼠交互效應
+            const ball = document.getElementById('ig-floating-ball');
+            document.addEventListener('mousemove', (e) => {
+                gsap.to("#cursor-glow", { 
+                    x: e.clientX - 300, 
+                    y: e.clientY - 300, 
+                    duration: 1.5, 
+                    ease: "power2.out" 
+                });
+                
+                if (ball) {
+                    const rect = ball.getBoundingClientRect();
+                    const ballX = rect.left + rect.width / 2;
+                    const ballY = rect.top + rect.height / 2;
+                    const dist = Math.hypot(e.clientX - ballX, e.clientY - ballY);
+                    if (dist < 250) {
+                        gsap.to(ball, { x: (e.clientX - ballX) * 0.3, y: (e.clientY - ballY) * 0.3, duration: 0.5 });
+                    } else {
+                        gsap.to(ball, { x: 0, y: 0, duration: 0.5 });
+                    }
+                }
+            });
+        });
+
+        // 功能函數區
+        async function loginWithGoogle() {
+            if (!_supabase) return;
+            await _supabase.auth.signInWithOAuth({ 
+                provider: 'google', 
+                options: { redirectTo: window.location.origin + '/index.html' } 
+            });
+        }
+
+        function handleAuthUI() {
+            const authSection = document.getElementById('auth-section');
+            if (!authSection || !_supabase) return;
+
+            _supabase.auth.onAuthStateChange((event, session) => {
+                if (session?.user) {
+                    const avatar = session.user.user_metadata.avatar_url || 'photo/S__38223874.jpg';
+                    const fullName = session.user.user_metadata.full_name || 'User';
+                    authSection.innerHTML = `
+                        <div class="relative group">
+                            <div class="relative cursor-pointer">
+                                <img src="${avatar}" class="w-9 h-9 rounded-xl ring-4 ring-white shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+                                <div class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></div>
+                            </div>
+                            <div class="user-menu p-3 text-left">
+                                <div class="px-4 py-3 bg-slate-50 rounded-2xl mb-2">
+                                    <p class="text-slate-900 text-[10px] font-black truncate uppercase tracking-widest leading-tight">${fullName}</p>
+                                    <p class="text-slate-400 text-[9px] truncate mt-0.5 font-medium">${session.user.email}</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <a href="orders.html" class="flex items-center gap-3 p-3 text-[11px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-all group/item">
+                                        <span class="text-base group-hover/item:scale-110 transition-transform">📦</span> 訂單記錄
+                                    </a>
+                                    <div class="h-[1px] bg-slate-100 my-1 mx-2"></div>
+                                    <button onclick="_supabase.auth.signOut().then(()=>location.reload())" 
+                                            class="w-full flex items-center gap-3 p-3 text-[11px] font-bold text-red-400 hover:bg-red-50 rounded-xl transition-all group/logout">
+                                        <span class="text-base group-hover/logout:rotate-12 transition-transform">🚪</span> 登出
+                                    </button>
+                                </div>
+                            </div>
+                        </div>`;
+                }
+            });
+        }
+
+        function checkCartDot() {
+            const cart = JSON.parse(localStorage.getItem('ej_cart') || '[]');
+            const dot = document.getElementById('cart-dot');
+            if (cart.length > 0 && dot) dot.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
