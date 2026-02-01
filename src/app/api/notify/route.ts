@@ -2,17 +2,30 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    // 增加型別定義，防止 Build 失敗
+    const body: { 
+      order_id: string; 
+      name: string; 
+      phone: string; 
+      total: number; 
+      items: string; 
+    } = await req.json();
+
     const { order_id, name, phone, total, items } = body;
 
-    // 如果沒有環境變數，請暫時直接填入字串
-    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL || "你的_DISCORD_WEBHOOK_URL";
+    // 關鍵：使用後端環境變數 (不加 NEXT_PUBLIC_)
+    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+
+    if (!discordWebhookUrl) {
+      console.error("❌ 錯誤: Vercel 未設定 DISCORD_WEBHOOK_URL");
+      return NextResponse.json({ success: false, error: "Webhook URL missing" }, { status: 500 });
+    }
 
     const embedMessage = {
       username: "Eriju Order Bot",
       embeds: [{
         title: "🛒 新訂單成立！",
-        color: 0x0f172a,
+        color: 0x0f172a, // 深色主題
         fields: [
           { name: "訂單編號", value: `\`${order_id}\``, inline: false },
           { name: "客戶名稱", value: name, inline: true },
