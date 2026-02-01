@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import Lenis from "@studio-freight/lenis";
+import Lenis from "lenis";
 import gsap from "gsap";
 
 // --- 子組件：訂單卡片 ---
