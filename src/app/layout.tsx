@@ -2,6 +2,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import FooterWrapper from "@/components/FooterWrapper"; // 引入包裝組件
 import SmoothScroll from "@/components/SmoothScroll";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
   title: "Eriju | 官方網站",
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* 讓 Wrapper 自動幫你決定要不要顯示 Footer */}
           <FooterWrapper /> 
         </SmoothScroll>
+        <SpeedInsights />
       </body>
     </html>
   );
