@@ -1,7 +1,9 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import FooterWrapper from "@/components/FooterWrapper"; // 引入包裝組件
+import FooterWrapper from "@/components/FooterWrapper";
 import SmoothScroll from "@/components/SmoothScroll";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
   title: "Eriju | 官方網站",
@@ -18,6 +20,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* 讓 Wrapper 自動幫你決定要不要顯示 Footer */}
           <FooterWrapper /> 
         </SmoothScroll>
+
+        {/* Vercel 分析功能：追蹤訪客流量 */}
+        <Analytics />
+        {/* Vercel 性能監控：監控網頁加載速度與動畫流暢度 */}
+        <SpeedInsights />
       </body>
     </html>
   );
