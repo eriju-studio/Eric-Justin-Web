@@ -1,18 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import gsap from "gsap";
 import Link from "next/link";
 
 export default function CartPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex flex-col items-center justify-center bg-[#fcfcfc]">
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4"></div>
+      </div>
+    }>
+      <CartContent />
+    </Suspense>
+  );
+}
+
+function CartContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // 新增：物流方式狀態
+  const [shippingMethod, setShippingMethod] = useState<"post" | "711">("post");
   
   const [form, setForm] = useState({
     name: "",
@@ -25,6 +41,46 @@ export default function CartPage() {
     if (path.startsWith("http")) return path;
     const { data } = supabase.storage.from("assets").getPublicUrl(path);
     return data.publicUrl;
+  };
+
+  // 監聽綠界回傳
+  useEffect(() => {
+    const storeName = searchParams.get("storeName");
+    const storeId = searchParams.get("storeId");
+    if (storeName && storeId) {
+      setShippingMethod("711");
+      setForm(prev => ({ ...prev, address: `【7-11取貨】${storeName} (${storeId})` }));
+      // 清除網址參數
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [searchParams]);
+
+  const openECPayMap = () => {
+    const formEl = document.createElement("form");
+    formEl.method = "POST";
+    formEl.action = "https://logistics-stage.ecpay.com.tw/Express/map";
+    formEl.target = "_self"; 
+
+    const fields = {
+      MerchantID: "2000132",
+      LogisticsType: "CVS",
+      LogisticsSubType: "711",
+      IsCollection: "N",
+      ServerReplyURL: `${window.location.origin}/api/store-reply`,
+    };
+
+    Object.entries(fields).forEach(([name, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      formEl.appendChild(input);
+    });
+
+    document.body.appendChild(formEl);
+    formEl.submit();
+    document.body.removeChild(formEl);
   };
 
   useEffect(() => {
@@ -104,7 +160,6 @@ export default function CartPage() {
     window.dispatchEvent(new Event("storage"));
   };
 
-  // 這裡修正了編譯錯誤：將 async 移到內部
   const removeItem = (id: any) => {
     gsap.to(`#item-${id}`, {
       x: -20, opacity: 0, scale: 0.95, duration: 0.4,
@@ -149,7 +204,7 @@ export default function CartPage() {
 
   const processOrder = async () => {
     if (!user || !form.name || !form.phone || !form.address) {
-      alert("請完整填寫收件資訊並確保已登入");
+      alert("請完整填寫收件資訊與運送地址");
       return;
     }
 
@@ -270,7 +325,28 @@ export default function CartPage() {
 
             <section className="reveal space-y-8 mb-16">
               <h2 className="text-2xl font-black tracking-tight italic underline underline-offset-8 decoration-slate-200">收件資訊。</h2>
-              <div className="bg-white p-8 space-y-6 rounded-[35px] border border-black/[0.06] shadow-sm">
+              
+              <div className="bg-white p-8 space-y-8 rounded-[35px] border border-black/[0.06] shadow-sm">
+                
+                {/* 物流選擇器 */}
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">運送方式 Method</label>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => { setShippingMethod("post"); setForm({...form, address: ""}); }}
+                      className={`flex-1 py-4 rounded-2xl font-black text-xs tracking-widest transition-all ${shippingMethod === "post" ? "bg-slate-900 text-white shadow-lg" : "bg-slate-50 text-slate-400"}`}
+                    >
+                      🏠 郵寄
+                    </button>
+                    <button 
+                      onClick={() => setShippingMethod("711")}
+                      className={`flex-1 py-4 rounded-2xl font-black text-xs tracking-widest transition-all ${shippingMethod === "711" ? "bg-slate-900 text-white shadow-lg" : "bg-slate-50 text-slate-400"}`}
+                    >
+                      🏪 7-11 取貨
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">收件人姓名 Recipient</label>
@@ -281,9 +357,37 @@ export default function CartPage() {
                     <input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="09xx-xxx-xxx" className="w-full p-5 bg-slate-50 border border-transparent rounded-[22px] text-sm font-bold outline-none focus:bg-white focus:border-slate-900 transition-all" />
                   </div>
                 </div>
+
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">寄送地址 Shipping Address</label>
-                  <textarea rows={3} value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="請輸入完整地址" className="w-full p-5 bg-slate-50 border border-transparent rounded-[22px] text-sm font-bold outline-none focus:bg-white focus:border-slate-900 transition-all resize-none" />
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">
+                    {shippingMethod === "post" ? "寄送地址 Shipping Address" : "門市資訊 Store"}
+                  </label>
+                  
+                  {shippingMethod === "post" ? (
+                    <textarea 
+                      rows={3} 
+                      value={form.address} 
+                      onChange={e => setForm({...form, address: e.target.value})} 
+                      placeholder="請輸入完整地址" 
+                      className="w-full p-5 bg-slate-50 border border-transparent rounded-[22px] text-sm font-bold outline-none focus:bg-white focus:border-slate-900 transition-all resize-none" 
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      {form.address ? (
+                        <div className="flex items-center justify-between bg-slate-900 text-white p-5 rounded-[22px] shadow-xl animate-in fade-in zoom-in duration-500">
+                          <div className="font-bold text-sm tracking-tight">{form.address}</div>
+                          <button onClick={openECPayMap} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1 rounded-lg hover:bg-white/20 transition-all">更換門市</button>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={openECPayMap}
+                          className="w-full p-10 border-2 border-dashed border-slate-200 rounded-[22px] text-slate-400 font-bold text-sm hover:border-slate-900 hover:text-slate-900 transition-all bg-slate-50/50"
+                        >
+                          + 點擊開啟地圖選擇門市
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -300,9 +404,9 @@ export default function CartPage() {
 
               <button 
                 onClick={processOrder}
-                disabled={isProcessing || !user}
+                disabled={isProcessing || !user || !form.address}
                 className={`w-full py-7 rounded-[32px] font-black text-lg mt-12 uppercase tracking-[0.3em] transition-all duration-700 shadow-xl ${
-                  isProcessing || !user 
+                  isProcessing || !user || !form.address
                   ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
                   : 'bg-slate-900 text-white hover:bg-[#d98b5f]'
                 }`}
