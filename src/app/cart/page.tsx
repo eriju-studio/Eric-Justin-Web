@@ -1,94 +1,37 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import gsap from "gsap";
 import Link from "next/link";
+import confetti from "canvas-confetti";
 
 export default function CartPage() {
-  return (
-    <Suspense fallback={
-      <div className="h-screen flex flex-col items-center justify-center bg-[#fcfcfc]">
-        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4"></div>
-      </div>
-    }>
-      <CartContent />
-    </Suspense>
-  );
-}
-
-function CartContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
-  const [shippingMethod, setShippingMethod] = useState<"post" | "cvs">("post");
+  const [shippingMethod, setShippingMethod] = useState<"store" | "home">("store");
   
   const [form, setForm] = useState({
     name: "",
     phone: "",
-    address: ""
+    storeInfo: "", // 7-11 門市名稱
+    address: ""    // 地址或店號
   });
 
+  // 強化圖片抓取
   const getImageUrl = (path: string) => {
     if (!path || path === "null" || path === "") return null;
     if (path.startsWith("http")) return path;
-    const { data } = supabase.storage.from("assets").getPublicUrl(path);
+    const cleanPath = path.trim().replace(/^\/+/, "");
+    const { data } = supabase.storage.from("assets").getPublicUrl(cleanPath);
     return data.publicUrl;
   };
 
-  // 監聽藍新回傳 (注意欄位：StoreName, StoreID)
-  useEffect(() => {
-    const storeName = searchParams.get("storeName");
-    const storeId = searchParams.get("storeId");
-    
-    if (storeName && storeId) {
-      setShippingMethod("cvs");
-      setForm(prev => ({ ...prev, address: `【7-11取貨】${storeName} (${storeId})` }));
-      
-      // 清除網址參數保持美觀
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, "", newUrl);
-
-      // 觸發一個成功的 GSAP 動畫
-      gsap.fromTo(".address-tag", { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out" });
-    }
-  }, [searchParams]);
-
-  // 調用藍新測試地圖
-  const openNewebPayMap = () => {
-    const formEl = document.createElement("form");
-    formEl.method = "POST";
-    
-    // 這是藍新目前最穩定的測試網址 (ccore)
-    formEl.action = "https://ccore.newebpay.com/API/E_MAP"; 
-    formEl.target = "_self"; 
-
-    const fields = {
-      // 這是 ccore 專用的測試 ID
-      MerchantID: "MS31534434", 
-      LogisticsType: "1", // 7-11
-      // 你的回傳網址
-      ReplyURL: `${window.location.origin}/api/store-reply`, 
-    };
-
-    Object.entries(fields).forEach(([name, value]) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = name;
-      input.value = value;
-      formEl.appendChild(input);
-    });
-
-    document.body.appendChild(formEl);
-    formEl.submit();
-    document.body.removeChild(formEl);
-  };
   useEffect(() => {
     const initPage = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -120,7 +63,6 @@ function CartContent() {
             image: getImageUrl(item.products.image_url)
           }));
           setCart(formattedCart);
-          localStorage.setItem("ej_cart", JSON.stringify(formattedCart));
         }
       } else {
         const savedCart = JSON.parse(localStorage.getItem("ej_cart") || "[]");
@@ -143,9 +85,14 @@ function CartContent() {
   const updateQty = async (id: any, delta: number) => {
     const item = cart.find(i => i.id === id);
     if (!item) return;
+
     const newQty = Math.max(1, item.qty + delta);
     gsap.fromTo(`#item-${id}`, { scale: 1 }, { scale: 1.02, duration: 0.1, yoyo: true, repeat: 1 });
-    if (user) await supabase.from('cart').update({ quantity: newQty }).eq('user_id', user.id).eq('product_id', id);
+
+    if (user) {
+      await supabase.from('cart').update({ quantity: newQty }).eq('user_id', user.id).eq('product_id', id);
+    }
+
     const newCart = cart.map(i => i.id === id ? { ...i, qty: newQty } : i);
     setCart(newCart);
     localStorage.setItem("ej_cart", JSON.stringify(newCart));
@@ -155,12 +102,16 @@ function CartContent() {
   const removeItem = (id: any) => {
     gsap.to(`#item-${id}`, {
       x: -20, opacity: 0, scale: 0.95, duration: 0.4,
-      onComplete: async () => {
-        if (user) await supabase.from('cart').delete().eq('user_id', user.id).eq('product_id', id);
-        const newCart = cart.filter(item => item.id !== id);
-        setCart(newCart);
-        localStorage.setItem("ej_cart", JSON.stringify(newCart));
-        window.dispatchEvent(new Event("storage"));
+      onComplete: () => {
+        (async () => {
+          if (user) {
+            await supabase.from('cart').delete().eq('user_id', user.id).eq('product_id', id);
+          }
+          const newCart = cart.filter(item => item.id !== id);
+          setCart(newCart);
+          localStorage.setItem("ej_cart", JSON.stringify(newCart));
+          window.dispatchEvent(new Event("storage"));
+        })();
       }
     });
   };
@@ -168,67 +119,88 @@ function CartContent() {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
   const runSuccessRitual = () => {
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#000000', '#ff4d00', '#ffffff']
+    });
+
     setShowSuccess(true);
     setTimeout(() => {
       const tl = gsap.timeline();
       tl.to(".success-overlay", { opacity: 1, duration: 0.6, ease: "power3.out" })
-      .fromTo(".success-check", { scale: 0, rotate: -30, opacity: 0 }, { scale: 1, rotate: 0, opacity: 1, duration: 0.8, ease: "back.out(2)" })
-      .to(".success-overlay", { opacity: 0, duration: 0.8, delay: 1.5, onComplete: () => { router.push("/orders"); } });
+      .fromTo(".success-check", 
+        { scale: 0, rotate: -30, opacity: 0 }, 
+        { scale: 1, rotate: 0, opacity: 1, duration: 0.8, ease: "back.out(2)" }
+      )
+      .to(".success-overlay", { 
+        opacity: 0, 
+        duration: 0.8, 
+        delay: 2,
+        onComplete: () => { router.push("/orders"); }
+      });
     }, 10);
   };
 
   const processOrder = async () => {
     if (!user || !form.name || !form.phone || !form.address) {
-      alert("請完整填寫收件資訊與運送地址");
+      alert("請完整填寫收件資訊");
       return;
     }
+
     setIsProcessing(true);
+    
+    const finalAddress = shippingMethod === "store" 
+      ? `【7-11 ${form.storeInfo}】${form.address}`
+      : form.address;
+
+    const orderData = {
+      user_name: form.name,
+      user_email: user.email,
+      user_phone: form.phone,
+      shipping_address: finalAddress,
+      items: cart,
+      total_amount: subtotal,
+      status: 'pending'
+    };
+
     try {
-      const { data, error } = await supabase.from('orders').insert([{
-        user_name: form.name,
-        user_email: user.email,
-        user_phone: form.phone,
-        shipping_address: form.address,
-        items: cart,
-        total_amount: subtotal,
-        status: 'pending'
-      }]).select().single();
+      const { error } = await supabase.from('orders').insert([orderData]).select().single();
       if (error) throw error;
-      await fetch('/api/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order_id: data.id, 
-          name: form.name,
-          email: user.email,
-          phone: form.phone,
-          address: form.address,
-          total: subtotal,
-          items: cart.map(i => `• ${i.name} x ${i.qty}`).join('\n')
-        })
-      });
+
       localStorage.removeItem('ej_cart');
       await supabase.from('cart').delete().eq('user_id', user.id);
       window.dispatchEvent(new Event("storage"));
+
       runSuccessRitual();
+
     } catch (err: any) {
+      console.error(err);
       setIsProcessing(false);
-      alert("訂單失敗：" + err.message);
+      alert("訂單送出失敗：" + err.message);
     }
   };
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="h-screen flex flex-col items-center justify-center bg-[#fcfcfc]">
+      <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin mb-4"></div>
+      <div className="font-black text-slate-400 text-[10px] uppercase tracking-[0.5em]">讀取清單中...</div>
+    </div>
+  );
 
   return (
-    <div className="bg-[#fcfcfc] min-h-screen pt-32 pb-24 text-slate-900 overflow-x-hidden font-sans">
+    <div className="bg-[#fcfcfc] min-h-screen pt-32 pb-24 text-slate-900 overflow-x-hidden">
+      
       {showSuccess && (
         <div className="success-overlay fixed inset-0 z-[2000] bg-white/95 backdrop-blur-2xl flex flex-col items-center justify-center opacity-0">
-          <div className="success-check w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center">
+          <div className="success-check w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center shadow-2xl">
             <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
           </div>
-          <h2 className="mt-12 text-4xl font-black italic tracking-tighter">Order Confirmed.</h2>
+          <h2 className="mt-12 text-4xl font-black italic tracking-tighter uppercase">Order Confirmed.</h2>
+          <p className="mt-3 text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">感謝您的收藏，正在為您準備</p>
         </div>
       )}
 
@@ -241,25 +213,25 @@ function CartContent() {
         {cart.length === 0 ? (
           <div className="reveal py-32 text-center">
             <p className="text-slate-300 font-black text-2xl mb-8 tracking-tighter italic">購物袋目前是空的。</p>
-            <Link href="/catalog" className="inline-block bg-slate-900 text-white px-12 py-4 rounded-full font-black text-xs tracking-[0.2em] uppercase">返回商店</Link>
+            <Link href="/catalog" className="inline-block bg-slate-900 text-white px-12 py-4 rounded-full font-black text-xs tracking-[0.2em] hover:bg-amber-600 transition-all uppercase">返回商店</Link>
           </div>
         ) : (
           <>
             <div className="space-y-4 mb-16">
               {cart.map((item) => (
-                <div key={item.id} id={`item-${item.id}`} className="reveal bg-white p-6 flex gap-6 items-center rounded-[32px] border border-black/[0.06] shadow-sm group">
-                  <div className="w-24 h-24 bg-white rounded-2xl overflow-hidden flex-shrink-0 p-1 border border-slate-50 group-hover:scale-105 transition-transform duration-700">
+                <div key={item.id} id={`item-${item.id}`} className="reveal bg-white p-6 flex gap-6 items-center rounded-[32px] border border-black/[0.06] shadow-sm group hover:shadow-md transition-all">
+                  <div className="w-24 h-24 bg-white rounded-2xl overflow-hidden flex-shrink-0 p-1 border border-slate-50">
                     <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex-grow">
                     <h3 className="font-black text-slate-900 text-xl leading-tight uppercase italic">{item.name}</h3>
                     <div className="flex items-center gap-5 mt-4">
                       <div className="flex items-center bg-slate-50 rounded-xl p-1 border border-slate-100">
-                        <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 flex items-center justify-center font-bold text-slate-400">-</button>
+                        <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 hover:text-slate-900">-</button>
                         <span className="w-8 text-center text-sm font-black">{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 flex items-center justify-center font-bold text-slate-400">+</button>
+                        <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 hover:text-slate-900">+</button>
                       </div>
-                      <button onClick={() => removeItem(item.id)} className="text-[10px] text-slate-400 font-black uppercase hover:text-red-500 transition underline">移除品項</button>
+                      <button onClick={() => removeItem(item.id)} className="text-[10px] text-slate-400 font-black uppercase hover:text-red-500 transition underline underline-offset-4">移除品項</button>
                     </div>
                   </div>
                   <div className="text-right">
@@ -270,61 +242,76 @@ function CartContent() {
             </div>
 
             <section className="reveal space-y-8 mb-16">
-              <h2 className="text-2xl font-black tracking-tight italic">收件資訊。</h2>
-              <div className="bg-white p-8 space-y-8 rounded-[35px] border border-black/[0.06] shadow-sm">
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">運送方式 Method</label>
-                  <div className="flex gap-3">
-                    <button onClick={() => { setShippingMethod("post"); setForm({...form, address: ""}); }} className={`flex-1 py-4 rounded-2xl font-black text-xs transition-all ${shippingMethod === "post" ? "bg-slate-900 text-white shadow-lg" : "bg-slate-50 text-slate-400"}`}>🏠 郵寄</button>
-                    <button onClick={() => setShippingMethod("cvs")} className={`flex-1 py-4 rounded-2xl font-black text-xs transition-all ${shippingMethod === "cvs" ? "bg-slate-900 text-white shadow-lg" : "bg-slate-50 text-slate-400"}`}>🏪 超商取貨</button>
-                  </div>
-                </div>
+              <h2 className="text-2xl font-black tracking-tight italic underline underline-offset-8 decoration-slate-200 uppercase">Shipping Info.</h2>
+              
+              <div className="flex bg-slate-100 p-1.5 rounded-[24px]">
+                <button onClick={() => setShippingMethod("store")} className={`flex-1 py-3.5 rounded-[18px] text-[10px] font-black tracking-widest transition-all ${shippingMethod === "store" ? "bg-white shadow-sm" : "text-slate-400"}`}>7-11 取貨</button>
+                <button onClick={() => setShippingMethod("home")} className={`flex-1 py-3.5 rounded-[18px] text-[10px] font-black tracking-widest transition-all ${shippingMethod === "home" ? "bg-white shadow-sm" : "text-slate-400"}`}>宅配到府</button>
+              </div>
 
+              <div className="bg-white p-8 space-y-6 rounded-[35px] border border-black/[0.06] shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">收件人 Recipient</label>
-                    <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="姓名" className="w-full p-5 bg-slate-50 border border-transparent rounded-[22px] text-sm font-bold focus:bg-white focus:border-slate-900 transition-all outline-none" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">收件人 Name</label>
+                    <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="請輸入姓名" className="w-full p-5 bg-slate-50 rounded-[22px] text-sm font-bold outline-none border border-transparent focus:border-black transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">聯絡電話 Phone</label>
-                    <input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="09xx..." className="w-full p-5 bg-slate-50 border border-transparent rounded-[22px] text-sm font-bold focus:bg-white focus:border-slate-900 transition-all outline-none" />
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">聯絡電話 Phone</label>
+                    <input type="tel" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="09xxxxxxxx" className="w-full p-5 bg-slate-50 rounded-[22px] text-sm font-bold outline-none border border-transparent focus:border-black transition-all" />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{shippingMethod === "post" ? "寄送地址 Address" : "門市資訊 Store"}</label>
-                  {shippingMethod === "post" ? (
-                    <textarea rows={3} value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="完整地址" className="w-full p-5 bg-slate-50 border border-transparent rounded-[22px] text-sm font-bold focus:bg-white focus:border-slate-900 transition-all outline-none resize-none" />
-                  ) : (
-                    <div className="space-y-4">
-                      {form.address ? (
-                        <div className="address-tag flex items-center justify-between bg-slate-900 text-white p-5 rounded-[22px] shadow-xl">
-                          <div className="font-bold text-sm">{form.address}</div>
-                          <button onClick={openNewebPayMap} className="text-[10px] font-black uppercase bg-white/10 px-3 py-1 rounded-lg">更換門市</button>
-                        </div>
-                      ) : (
-                        <button onClick={openNewebPayMap} className="w-full p-10 border-2 border-dashed border-slate-200 rounded-[22px] text-slate-400 font-bold text-sm hover:border-slate-900 hover:text-slate-900 transition-all bg-slate-50/50">+ 點擊開啟藍新地圖選擇門市</button>
-                      )}
+                {shippingMethod === "store" ? (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                    {/* 地圖查詢引導區塊 */}
+                    <div className="bg-amber-50/50 p-6 rounded-[28px] border border-amber-100/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex-grow">
+                        <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-[0.2em] mb-1">E-MAP 查詢</h4>
+                        <p className="text-[11px] text-amber-700/80 font-bold leading-relaxed">點擊右側開啟 7-11 地圖查詢門市名稱，<br/>查完後請於下方輸入資訊。</p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => window.open("https://emap.pcsc.com.tw/", "711Emap", "width=1000,height=800")}
+                        className="bg-white text-slate-900 px-6 py-3 rounded-full text-[10px] font-black shadow-sm hover:bg-amber-600 hover:text-white transition-all active:scale-95 uppercase"
+                      >
+                        開啟官方地圖
+                      </button>
                     </div>
-                  )}
-                </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">7-11 門市名稱 Store Name</label>
+                      <input type="text" value={form.storeInfo} onChange={e => setForm({...form, storeInfo: e.target.value})} placeholder="例如：XX門市" className="w-full p-5 bg-slate-50 rounded-[22px] text-sm font-bold outline-none border border-transparent focus:border-black transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">門市地址或店號 Store Address</label>
+                      <input type="text" value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="請輸入地址或 6 位店號" className="w-full p-5 bg-slate-50 rounded-[22px] text-sm font-bold outline-none border border-transparent focus:border-black transition-all" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-[0.2em]">寄送地址 Address</label>
+                    <textarea rows={3} value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="請輸入完整配送地址" className="w-full p-5 bg-slate-50 rounded-[22px] text-sm font-bold outline-none border border-transparent focus:border-black transition-all resize-none" />
+                  </div>
+                )}
               </div>
             </section>
 
             <section className="reveal border-t border-slate-100 pt-10 space-y-4">
-              <div className="flex justify-between text-4xl md:text-5xl font-black mt-6 px-2">
+              <div className="flex justify-between text-4xl md:text-5xl font-black px-2">
                 <span className="tracking-tighter">總計</span>
                 <span className="tracking-tighter italic">NT$ {subtotal.toLocaleString()}</span>
               </div>
 
               <button 
                 onClick={processOrder}
-                disabled={isProcessing || !user || !form.address}
-                className={`w-full py-7 rounded-[32px] font-black text-lg mt-12 uppercase tracking-[0.3em] transition-all duration-700 shadow-xl ${
-                  isProcessing || !user || !form.address ? 'bg-slate-100 text-slate-300' : 'bg-slate-900 text-white hover:bg-amber-600'
+                disabled={isProcessing || !user}
+                className={`w-full py-8 rounded-[35px] font-black text-lg mt-12 uppercase tracking-[0.3em] transition-all duration-500 shadow-xl ${
+                  isProcessing || !user 
+                  ? 'bg-slate-100 text-slate-300' 
+                  : 'bg-slate-900 text-white hover:bg-[#ff4d00]'
                 }`}
               >
-                {!user ? "請先登入帳號" : isProcessing ? "處理中..." : "送出訂單"}
+                {!user ? "請先登入帳號" : isProcessing ? "處理中..." : "送出訂單 — ORDER"}
               </button>
             </section>
           </>
