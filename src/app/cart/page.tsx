@@ -166,9 +166,30 @@ export default function CartPage() {
     };
 
     try {
-      const { error } = await supabase.from('orders').insert([orderData]).select().single();
+      // 1. 寫入 Supabase 訂單表
+      const { data: newOrder, error } = await supabase.from('orders').insert([orderData]).select().single();
       if (error) throw error;
 
+      // 2. 準備 Discord 通知內容
+      const itemsString = cart.map(item => `- ${item.name} x ${item.qty}`).join('\n');
+
+      // 3. 呼叫你的 /api/notify API
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: newOrder.id,
+          name: form.name,
+          email: user.email,
+          phone: form.phone,
+          address: finalAddress,
+          total: subtotal,
+          items: itemsString,
+          status: "pending"
+        }),
+      }).catch(err => console.error("通知失敗:", err));
+
+      // 4. 清理
       localStorage.removeItem('ej_cart');
       await supabase.from('cart').delete().eq('user_id', user.id);
       window.dispatchEvent(new Event("storage"));
@@ -263,7 +284,6 @@ export default function CartPage() {
 
                 {shippingMethod === "store" ? (
                   <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-500">
-                    {/* 地圖查詢引導區塊 */}
                     <div className="bg-amber-50/50 p-6 rounded-[28px] border border-amber-100/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex-grow">
                         <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-[0.2em] mb-1">E-MAP 查詢</h4>
