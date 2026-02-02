@@ -18,7 +18,7 @@ export default function CatalogPage() {
 
   useEffect(() => {
     const fetchProducts = async () => {
-      const startTime = Date.now(); // 1. 紀錄抓取開始時間
+      const startTime = Date.now(); 
 
       const { data, error } = await supabase
         .from("products")
@@ -29,7 +29,6 @@ export default function CatalogPage() {
         setProducts(data);
       }
 
-      // 2. 計算剩餘需要「強制等待」的時間，確保骨架屏不閃爍
       const elapsedTime = Date.now() - startTime;
       const remainingTime = Math.max(800 - elapsedTime, 0);
 
@@ -42,7 +41,6 @@ export default function CatalogPage() {
   }, []);
 
   useEffect(() => {
-    // 3. 只有當 loading 結束且產品渲染後，才執行 GSAP
     if (!loading && products.length > 0) {
       const ctx = gsap.context(() => {
         gsap.fromTo(".product-card", 
@@ -71,7 +69,6 @@ export default function CatalogPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-12 lg:gap-16">
           {loading ? (
-            // --- 骨架屏 (保持原本設計) ---
             [...Array(8)].map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="aspect-[1/1.1] bg-slate-100 rounded-[50px] mb-8" />
@@ -81,7 +78,6 @@ export default function CatalogPage() {
               </div>
             ))
           ) : (
-            // --- 真實商品內容 (保持原本設計) ---
             products.map((p) => {
               const isOff = p.status === false;
               const imgUrl = getImageUrl(p.image_url);
@@ -107,7 +103,18 @@ export default function CatalogPage() {
                         {isOff ? 'Archive' : (p.tag || 'Official')}
                       </span>
                       <h3 className="text-2xl font-black text-slate-900 tracking-tight mb-1 group-hover:text-orange-500 transition-colors">{p.name}</h3>
-                      <p className={`font-bold ${isOff ? 'text-slate-300' : 'text-slate-500'}`}>NT$ {p.price?.toLocaleString()}</p>
+                      
+                      {/* 修改價格區域：補上原價劃線 */}
+                      <div className="flex items-center gap-3">
+                        <p className={`font-black text-lg ${isOff ? 'text-slate-300' : 'text-slate-900'}`}>
+                          NT$ {p.price?.toLocaleString()}
+                        </p>
+                        {p.original_price && p.original_price > p.price && (
+                          <p className="text-sm font-bold text-slate-300 line-through decoration-slate-300">
+                            NT$ {p.original_price.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 </div>
