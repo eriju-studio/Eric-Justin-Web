@@ -65,7 +65,7 @@ function CartContent() {
     const fields = {
       MerchantID: "2000132",
       LogisticsType: "CVS",
-      LogisticsSubType: "711",
+      LogisticsSubType: "UNIMART",
       IsCollection: "N",
       ServerReplyURL: `${window.location.origin}/api/store-reply`,
     };
