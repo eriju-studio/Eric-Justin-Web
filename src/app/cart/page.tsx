@@ -33,6 +33,10 @@ export default function CartPage() {
   };
 
   useEffect(() => {
+    // 【修正】強制恢復 Body 滾動，防止被其他頁面的樣式鎖死
+    document.body.style.overflow = "auto";
+    document.body.style.height = "auto";
+
     const initPage = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -166,14 +170,11 @@ export default function CartPage() {
     };
 
     try {
-      // 1. 寫入 Supabase 訂單表
       const { data: newOrder, error } = await supabase.from('orders').insert([orderData]).select().single();
       if (error) throw error;
 
-      // 2. 準備 Discord 通知內容
       const itemsString = cart.map(item => `- ${item.name} x ${item.qty}`).join('\n');
 
-      // 3. 呼叫你的 /api/notify API
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,7 +190,6 @@ export default function CartPage() {
         }),
       }).catch(err => console.error("通知失敗:", err));
 
-      // 4. 清理
       localStorage.removeItem('ej_cart');
       await supabase.from('cart').delete().eq('user_id', user.id);
       window.dispatchEvent(new Event("storage"));
@@ -211,8 +211,10 @@ export default function CartPage() {
   );
 
   return (
-    <div className="bg-[#fcfcfc] min-h-screen pt-32 pb-24 text-slate-900 overflow-x-hidden">
+    // 【修正】移除外層過多的 overflow 限制，改用 touch-auto
+    <div className="bg-[#fcfcfc] min-h-screen pt-32 pb-24 text-slate-900 touch-auto">
       
+      {/* 【修正】只有 showSuccess 為真才渲染這塊，徹底防止透明遮罩攔截點擊 */}
       {showSuccess && (
         <div className="success-overlay fixed inset-0 z-[2000] bg-white/95 backdrop-blur-2xl flex flex-col items-center justify-center opacity-0">
           <div className="success-check w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center shadow-2xl">
@@ -225,7 +227,7 @@ export default function CartPage() {
         </div>
       )}
 
-      <main className="max-w-3xl mx-auto px-6">
+      <main className="max-w-3xl mx-auto px-6 relative z-10">
         <header className="reveal mb-12">
           <span className="text-[10px] font-black tracking-[0.4em] text-amber-600 uppercase block mb-4">Final Check</span>
           <h1 className="text-5xl font-black tracking-tighter italic">確認您的訂單。</h1>
@@ -255,8 +257,8 @@ export default function CartPage() {
                       <button onClick={() => removeItem(item.id)} className="text-[10px] text-slate-400 font-black uppercase hover:text-red-500 transition underline underline-offset-4">移除品項</button>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-black text-slate-900 text-lg tracking-tighter">NT$ {(item.price * item.qty).toLocaleString()}</div>
+                  <div className="text-right font-black text-slate-900 text-lg tracking-tighter">
+                    NT$ {(item.price * item.qty).toLocaleString()}
                   </div>
                 </div>
               ))}
