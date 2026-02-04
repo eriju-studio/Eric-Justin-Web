@@ -93,7 +93,7 @@ export default function HomePage() {
               </div>
               <div className="p-10 text-left flex justify-between items-end">
                 <div className="flex-1">
-                  <h3 className="text-3xl font-black mb-3 text-slate-900">可愛小卡系列</h3>
+                  <h3 className="text-3xl font-black mb-3 text-slate-900">經典系列</h3>
                   <p className="text-slate-400">極致質感，卻不失溫度。</p>
                 </div>
                 <div className="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center text-2xl group-hover:bg-slate-900 group-hover:text-white transition-all text-slate-900">
@@ -119,8 +119,8 @@ export default function HomePage() {
               </div>
               <div className="p-10 text-left flex justify-between items-end">
                 <div className="flex-1">
-                  <h3 className="text-3xl font-black mb-3 text-slate-900">專業聲學配飾</h3>
-                  <p className="text-slate-400">為 AirPods Pro 量身打造。</p>
+                  <h3 className="text-3xl font-black mb-3 text-slate-900">專業</h3>
+                  <p className="text-slate-400">為你量身打造。</p>
                 </div>
                 <div className="w-14 h-14 rounded-full border border-slate-100 flex items-center justify-center text-2xl group-hover:bg-slate-900 group-hover:text-white transition-all text-slate-900">
                   →
