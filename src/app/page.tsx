@@ -10,7 +10,7 @@ export default function HomePage() {
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
 
-    // 1. 鼠標光暈追蹤
+   //滑鼠追蹤
     const glow = document.getElementById("cursor-glow");
     const handleMouseMove = (e: MouseEvent) => {
       gsap.to(glow, {
@@ -21,7 +21,7 @@ export default function HomePage() {
       });
     };
 
-    // 2. 元素進入動畫 (Reveal)
+    // 元素動畫
     gsap.utils.toArray(".reveal").forEach((el: any) => {
       gsap.to(el, {
         autoAlpha: 1,
@@ -44,9 +44,9 @@ export default function HomePage() {
       {/* 鼠標光暈背景 */}
       <div className="glow-bg" id="cursor-glow"></div>
 
-      {/* --- Hero Section --- */}
+      {/* Hero Section */}
       <section className="relative min-h-[80vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-        {/* 背景網格紋理 */}
+        {/* 背景網格 */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] -z-10 opacity-40"></div>
         
         <div className="reveal opacity-0 translate-y-10 max-w-4xl">
@@ -67,7 +67,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- 新品系列 Section --- */}
+      {/* --- 系列 Section --- */}
       <section id="features" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-5xl font-black tracking-tighter mb-4 reveal opacity-0 translate-y-10 uppercase text-slate-900">
@@ -131,7 +131,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- 品牌故事 Section --- */}
+      {/* 故事 Section */}
       <section className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="reveal opacity-0 translate-y-10 relative overflow-hidden rounded-[60px] bg-slate-900 min-h-[500px] flex items-center group">
@@ -148,7 +148,7 @@ export default function HomePage() {
               <span className="text-orange-500 font-black text-xs tracking-[0.4em] uppercase mb-6 block">介紹</span>
               <h2 className="text-white text-5xl md:text-6xl font-black mb-8 leading-tight">關於 Eriju<br />的不妥協。</h2>
               <Link href="/about" className="inline-flex items-center gap-4 text-white font-bold group/link">
-                <span className="border-b-2 border-white/30 pb-1 group-hover/link:border-white transition-all">探索品牌故事</span>
+                <span className="border-b-2 border-white/30 pb-1 group-hover/link:border-white transition-all">探索故事</span>
                 <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-slate-900 transition-all">
                   →
                 </div>
