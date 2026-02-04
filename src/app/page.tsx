@@ -80,7 +80,7 @@ export default function HomePage() {
             <Link href="/catalog" className="reveal opacity-0 translate-y-10 release-card group block">
               <div className="aspect-[4/5] overflow-hidden bg-slate-50 relative">
                 <Image
-                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/still.png"
+                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/icon.png"
                   alt="可愛小卡系列"
                   fill
                   className="object-cover transition-transform duration-1000 group-hover:scale-110"
@@ -106,7 +106,7 @@ export default function HomePage() {
             <Link href="/catalog" className="reveal opacity-0 translate-y-10 release-card group block">
               <div className="aspect-[4/5] overflow-hidden bg-slate-50 relative">
                 <Image
-                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/S__38223874.jpg"
+                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/3.png"
                   alt="專業聲學配飾"
                   fill
                   className="object-cover transition-transform duration-1000 group-hover:scale-110"

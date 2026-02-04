@@ -84,7 +84,7 @@ export default function AboutPage() {
           <div className="reveal order-1 md:order-2">
             <div className="rounded-[60px] overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-1000 group bg-slate-50">
               <img 
-                src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/S__38223874.jpg" 
+                src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/icon.png" 
                 alt="Brand visual" 
                 className="w-full h-auto scale-110 group-hover:scale-100 transition-transform duration-1000 object-cover" 
               />
