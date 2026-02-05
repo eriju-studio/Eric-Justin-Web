@@ -1,5 +1,6 @@
 "use client";
 
+// @ts-nocheck
 import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -27,22 +28,34 @@ type Product = {
 };
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "ERIJUSTUDIO99";
+// 在此填入你的 Webhook 網址
+const DISCORD_WEBHOOK_URL = ""; 
 
 export default function AdminPage() {
   const [isLocked, setIsLocked] = useState(true);
   const [passwordInput, setPasswordInput] = useState("");
   const [mainTab, setMainTab] = useState<"orders" | "products">("orders");
-  const [orderSubTab, setOrderSubTab] = useState<Order["status"]>("pending");
+  const [orderSubTab, setOrderSubTab] = useState<string>("all"); 
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
 
-  // --- 數據獲取 ---
+  const sendDC = async (msg: string) => {
+    if (!DISCORD_WEBHOOK_URL) return;
+    try {
+      await fetch(DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: `🛠️ **管理後台通知**\n${msg}` }),
+      });
+    } catch (e) { console.error(e); }
+  };
+
   const fetchData = useCallback(async () => {
-    const { data: ord } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-    const { data: prd } = await supabase.from("products").select("*").order("id", { ascending: false });
+    const { data: ord, error: oErr } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const { data: prd, error: pErr } = await supabase.from("products").select("*").order("id", { ascending: false });
     if (ord) setOrders(ord);
     if (prd) setProducts(prd);
   }, []);
@@ -62,144 +75,130 @@ export default function AdminPage() {
       setIsLocked(false);
       fetchData();
     } else {
-      alert("管理密碼錯誤！");
+      alert("密碼錯誤，請重新輸入");
     }
-  };
-
-  // --- 狀態更動核心 ---
-  const updateOrderStatus = async (order: Order, newStatus: Order["status"]) => {
-    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", order.id);
-    if (error) return alert("更新失敗");
-    fetchData();
-  };
-
-  // --- 作品操作 ---
-  const openEditModal = (product?: Product) => {
-    setEditingProduct(product || { name: "", price: 0, status: true, image_url: "", description: "" });
-    setIsModalOpen(true);
   };
 
   const saveProduct = async () => {
-    if (!editingProduct?.name) return alert("請輸入名稱");
+    if (!editingProduct?.name) return alert("請輸入產品名稱");
     
-    if (editingProduct.id) {
-      const { error } = await supabase.from("products").update(editingProduct).eq("id", editingProduct.id);
-      if (error) alert(error.message);
+    const { id, ...updateData } = editingProduct;
+    let error;
+
+    if (id) {
+      const { error: err } = await supabase.from("products").update(updateData).eq("id", id);
+      error = err;
     } else {
-      const { error } = await supabase.from("products").insert([editingProduct]);
-      if (error) alert(error.message);
+      const { error: err } = await supabase.from("products").insert([updateData]);
+      error = err;
     }
-    setIsModalOpen(false);
-    fetchData();
+
+    if (error) {
+      alert(`操作失敗：${error.message}\n請確認資料庫權限是否正常。`);
+    } else {
+      sendDC(`🖼️ 作品更新：**${editingProduct.name}** 已成功存檔`);
+      setIsModalOpen(false);
+      fetchData();
+    }
   };
 
   const deleteProduct = async (id: string) => {
-    if (!window.confirm("確定刪除此作品？此動作無法復原。")) return;
-    await supabase.from("products").delete().eq("id", id);
-    fetchData();
+    if (!confirm("確定要永久刪除此作品嗎？此操作無法還原。")) return;
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) alert(`刪除失敗: ${error.message}`);
+    else {
+      sendDC(`🗑️ 已從作品庫移除作品 (ID: ${id})`);
+      fetchData();
+    }
   };
 
-  const getStatusCount = (status: Order["status"]) => orders.filter(o => o.status === status).length;
-  const hasUrgentAction = orders.some(o => o.status === 'pending' || o.status === 'cancelling');
+  const updateOrderStatus = async (order: Order, newStatus: string) => {
+    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", order.id);
+    if (error) alert(error.message);
+    else {
+      sendDC(`📦 訂單 [${order.user_name}] 狀態更新為：**${newStatus}**`);
+      fetchData();
+    }
+  };
+
+  const displayOrders = orderSubTab === "all" 
+    ? orders 
+    : orders.filter(o => o.status === orderSubTab);
 
   if (isLocked) {
     return (
-      <div className="fixed inset-0 z-[10000] bg-slate-950 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm text-center">
-          <div className="w-20 h-20 bg-white rounded-[2.5rem] mx-auto mb-8 flex items-center justify-center text-black text-3xl font-black italic shadow-2xl">E</div>
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="SECRET KEY" className="w-full bg-slate-900 border border-slate-800 text-white p-5 rounded-2xl text-center font-black tracking-widest focus:outline-none focus:border-blue-500" autoFocus />
-            <button className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase hover:bg-blue-600 hover:text-white transition-all">解鎖後台</button>
-          </form>
-        </div>
+      <div className="fixed inset-0 z-[10000] bg-slate-950 flex items-center justify-center p-6 text-white">
+        <form onSubmit={handleUnlock} className="w-full max-w-sm text-center">
+          <div className="w-16 h-16 bg-white rounded-2xl mx-auto mb-6 flex items-center justify-center text-black font-black italic text-2xl shadow-[0_0_30px_rgba(255,255,255,0.2)]">E</div>
+          <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-4">Eriju Studio Security</p>
+          <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-slate-900 border border-slate-800 p-5 rounded-2xl text-center font-black tracking-widest focus:outline-none focus:border-white/50 transition-all" placeholder="請輸入安全金鑰" autoFocus />
+          <button className="w-full bg-white text-black py-4 mt-4 rounded-2xl font-black uppercase hover:bg-orange-500 hover:text-white transition-all duration-300">解除鎖定</button>
+        </form>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#f8f9fa] overflow-y-auto flex flex-col font-sans antialiased text-slate-900">
-      {/* 頂部導覽 */}
-      <nav className="sticky top-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-gray-100 px-6 py-4">
+    <div className="fixed inset-0 z-[9999] bg-[#f8f9fa] overflow-y-auto flex flex-col font-sans text-slate-900">
+      <nav className="sticky top-0 z-[100] bg-white/80 backdrop-blur-md border-b p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-black text-sm">E</div>
-            <div className="flex flex-col">
-              <span className="font-black italic text-lg tracking-tighter uppercase leading-none">Admin HQ</span>
-              <span className="text-[9px] font-bold text-slate-400 tracking-widest uppercase mt-1">Studio Management</span>
-            </div>
+          <div className="font-black italic text-xl tracking-tighter">ERIJU 管理系統</div>
+          <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+            <button onClick={() => setMainTab("orders")} className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${mainTab === "orders" ? "bg-white shadow-sm" : "text-slate-400"}`}>訂單處理</button>
+            <button onClick={() => setMainTab("products")} className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${mainTab === "products" ? "bg-white shadow-sm" : "text-slate-400"}`}>作品管理</button>
           </div>
-          <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl">
-            <button onClick={() => setMainTab("orders")} className={`relative px-8 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${mainTab === "orders" ? "bg-white text-black shadow-md" : "text-slate-400 hover:text-slate-600"}`}>
-              訂單管理
-              {hasUrgentAction && <span className="absolute top-2 right-4 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>}
-            </button>
-            <button onClick={() => setMainTab("products")} className={`px-8 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${mainTab === "products" ? "bg-white text-black shadow-md" : "text-slate-400 hover:text-slate-600"}`}>作品庫</button>
-          </div>
-          <button onClick={() => { window.localStorage.removeItem("admin_auth_status"); window.location.reload(); }} className="px-4 py-2 border border-red-100 rounded-xl text-[10px] font-black text-red-500 uppercase hover:bg-red-50 transition-all">Logout</button>
+          <button onClick={() => { window.localStorage.clear(); window.location.reload(); }} className="text-[10px] font-bold text-red-500 uppercase border border-red-100 px-3 py-1 rounded-lg hover:bg-red-50 transition-all">安全登出</button>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto w-full p-6 py-12">
+      <main className="max-w-7xl mx-auto w-full p-6 py-10">
         {mainTab === "orders" ? (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* 子狀態標籤 */}
-            <div className="flex gap-3 mb-12 overflow-x-auto pb-4 scrollbar-hide">
-              {(['pending', 'processing', 'cancelling', 'delivered', 'completed', 'cancelled'] as const).map(tab => {
-                const count = getStatusCount(tab);
-                return (
-                  <button 
-                    key={tab}
-                    onClick={() => setOrderSubTab(tab)}
-                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-3 ${orderSubTab === tab ? 'bg-slate-900 text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 border border-slate-100 hover:border-slate-300'}`}
-                  >
-                    {tab === 'pending' ? '待處理' : tab === 'processing' ? '製作中' : tab === 'cancelling' ? '取消申請' : tab === 'delivered' ? '已發貨' : tab === 'completed' ? '已完成' : '已取消'}
-                    {count > 0 && <span className={`px-2 py-0.5 rounded-lg text-[9px] ${orderSubTab === tab ? 'bg-white text-black' : 'bg-red-500 text-white'}`}>{count}</span>}
-                  </button>
-                );
-              })}
+          <section className="animate-in fade-in duration-500">
+            <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+              {['all', 'pending', 'processing', 'delivered', 'completed', 'cancelled', 'cancelling'].map(tab => (
+                <button 
+                  key={tab} 
+                  onClick={() => setOrderSubTab(tab)}
+                  className={`px-5 py-2.5 rounded-full text-[10px] font-black tracking-widest transition-all whitespace-nowrap ${orderSubTab === tab ? 'bg-black text-white' : 'bg-white border text-slate-400 hover:border-slate-300'}`}
+                >
+                  {tab === 'all' ? '全部訂單' : tab === 'pending' ? '待處理' : tab === 'processing' ? '製作中' : tab === 'delivered' ? '已發貨' : tab === 'completed' ? '已完成' : tab === 'cancelling' ? '取消中' : '已取消'}
+                  <span className={`ml-2 px-1.5 py-0.5 rounded ${orderSubTab === tab ? 'bg-white/20' : 'bg-slate-100'}`}>
+                    {tab === 'all' ? orders.length : orders.filter(o => o.status === tab).length}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            <div className="grid gap-6">
-              {orders.filter(o => o.status === orderSubTab).length === 0 ? (
-                <div className="py-48 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
-                  <p className="text-slate-300 font-black uppercase tracking-[0.5em] italic">No Orders / 目前尚無訂單</p>
-                </div>
+            <div className="grid gap-4">
+              {displayOrders.length === 0 ? (
+                <div className="py-20 text-center border-2 border-dashed rounded-[2.5rem] text-slate-300 font-bold uppercase tracking-widest">目前沒有相關訂單</div>
               ) : (
-                orders.filter(o => o.status === orderSubTab).map(order => (
-                  <div key={order.id} className={`bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between gap-8 hover:shadow-xl hover:shadow-slate-100 transition-all duration-500 ${order.status === 'cancelling' ? 'ring-2 ring-red-500 bg-red-50/10' : ''}`}>
+                displayOrders.map(order => (
+                  <div key={order.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between gap-6 hover:shadow-md transition-all">
                     <div className="flex-1">
-                      <div className="flex items-center gap-4 mb-4">
-                        <h3 className="text-2xl font-black italic tracking-tighter text-slate-900 uppercase">{order.user_name}</h3>
-                        <span className="bg-slate-50 text-slate-400 text-[9px] px-3 py-1 rounded-full font-black tracking-widest border border-slate-100">ID: {order.id.slice(0, 8)}</span>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="font-black text-xl italic tracking-tighter">{order.user_name}</span>
+                        <span className={`text-[9px] font-black px-2 py-1 rounded uppercase ${order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-400'}`}>
+                          {order.status}
+                        </span>
                       </div>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-6">
-                           <div className="flex flex-col"><span className="text-[9px] font-black text-slate-300 uppercase">Contact</span><p className="font-bold text-blue-600 text-sm">{order.user_phone}</p></div>
-                           <div className="flex flex-col"><span className="text-[9px] font-black text-slate-300 uppercase">Date</span><p className="font-bold text-slate-500 text-sm">{new Date(order.created_at).toLocaleDateString()}</p></div>
-                        </div>
-                        <div className="bg-slate-50/50 p-5 rounded-2xl text-xs font-bold text-slate-600 border border-slate-100/50">{order.shipping_address}</div>
-                      </div>
-                      <div className="mt-8 pt-6 border-t border-slate-50">
+                      <p className="text-xs font-bold text-blue-600 mb-4">{order.user_phone} | <span className="text-slate-400">{order.user_email}</span></p>
+                      <div className="bg-slate-50 p-4 rounded-2xl text-xs font-bold text-slate-500 mb-4">收件地址：{order.shipping_address}</div>
+                      <div className="space-y-1">
                         {order.items.map((item, i) => (
-                          <div key={i} className="flex justify-between text-xs font-black italic py-1">
-                            <span className="text-slate-400 uppercase">{item.name} <span className="text-slate-300 not-italic">× {item.qty}</span></span>
-                            <span className="text-slate-900">NT$ {(item.price * item.qty).toLocaleString()}</span>
-                          </div>
+                          <div key={i} className="text-[10px] font-black italic text-slate-400 uppercase">・{item.name} × {item.qty}</div>
                         ))}
                       </div>
                     </div>
-                    <div className="flex flex-col justify-between items-end min-w-[220px]">
-                      <div className="text-right">
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Grand Total</span>
-                        <p className="text-4xl font-black italic tracking-tighter tabular-nums text-slate-900 mt-1">NT$ {order.total_amount.toLocaleString()}</p>
+                    <div className="text-right flex flex-col justify-between items-end">
+                      <div>
+                        <span className="text-[10px] font-black text-slate-300 uppercase">訂單總金額</span>
+                        <div className="text-3xl font-black italic tracking-tighter">NT$ {order.total_amount.toLocaleString()}</div>
                       </div>
-                      <div className="flex flex-wrap gap-2 justify-end mt-8">
-                        {order.status === 'pending' && <button onClick={() => updateOrderStatus(order, 'processing')} className="bg-blue-600 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100">開始製作</button>}
-                        {order.status === 'processing' && <button onClick={() => updateOrderStatus(order, 'delivered')} className="bg-green-600 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition shadow-lg shadow-green-100">發貨完成</button>}
-                        {order.status === 'delivered' && <button onClick={() => updateOrderStatus(order, 'completed')} className="bg-slate-900 text-white px-10 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition">結案</button>}
-                        {order.status !== 'completed' && order.status !== 'cancelled' && (
-                          <button onClick={() => { if(confirm("確定取消？")) updateOrderStatus(order, 'cancelled') }} className="text-[10px] font-black text-slate-300 hover:text-red-500 transition px-4 py-2">取消訂單</button>
-                        )}
+                      <div className="flex gap-2 mt-6">
+                        {order.status === 'pending' && <button onClick={() => updateOrderStatus(order, 'processing')} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">開始製作</button>}
+                        {order.status === 'processing' && <button onClick={() => updateOrderStatus(order, 'delivered')} className="bg-green-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black tracking-widest shadow-lg shadow-green-100 hover:bg-green-700 transition-all">確認發貨</button>}
+                        {order.status === 'delivered' && <button onClick={() => updateOrderStatus(order, 'completed')} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black tracking-widest hover:bg-black transition-all">完成結案</button>}
                       </div>
                     </div>
                   </div>
@@ -208,97 +207,80 @@ export default function AdminPage() {
             </div>
           </section>
         ) : (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-end mb-12">
+          <section className="animate-in fade-in duration-500">
+            <div className="flex justify-between items-end mb-10">
               <div>
-                <h2 className="text-4xl font-black italic uppercase tracking-tighter text-slate-900">Archive / 作品庫</h2>
-                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-2">Manage your creative inventory</p>
+                <h2 className="text-3xl font-black italic tracking-tighter uppercase">作品庫管理</h2>
+                <p className="text-slate-400 text-[10px] font-bold uppercase mt-1">Inventory Control</p>
               </div>
-              <button onClick={() => openEditModal()} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black shadow-2xl shadow-slate-200 text-xs hover:bg-blue-600 hover:-translate-y-1 transition-all duration-300">+ ADD MASTERPIECE</button>
+              <button onClick={() => { setEditingProduct({ name: "", price: 0, status: true, image_url: "", description: "" }); setIsModalOpen(true); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs hover:bg-blue-600 transition-all shadow-xl shadow-slate-200">+ 新增作品</button>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.length === 0 ? (
-                <div className="col-span-full py-48 text-center bg-white rounded-[3rem] border border-dashed border-slate-200">
-                  <p className="text-slate-300 font-black uppercase tracking-widest italic">Inventory is Empty / 尚未上架作品</p>
-                </div>
-              ) : (
-                products.map((product) => (
-                  <div key={product.id} className="group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500 flex flex-col">
-                    <div className="relative aspect-[5/4] bg-slate-100 overflow-hidden">
-                      {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300 font-black italic text-xs">NO VISUAL</div>
-                      )}
-                      <div className="absolute top-6 left-6">
-                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest backdrop-blur-md ${product.status ? 'bg-green-500/90 text-white' : 'bg-slate-900/80 text-white'}`}>
-                          {product.status ? '● In Stock' : '○ Archive'}
-                        </span>
-                      </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {products.map(p => (
+                <div key={p.id} className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden group hover:shadow-2xl hover:shadow-slate-200 transition-all duration-500">
+                  <div className="aspect-video bg-slate-100 overflow-hidden relative">
+                    <img src={p.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={p.name} />
+                    {!p.status && <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center font-black italic text-xs uppercase text-slate-600">已下架</div>}
+                  </div>
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-black italic uppercase tracking-tighter">{p.name}</h3>
+                      <span className="font-black text-slate-400 text-sm">NT$ {p.price.toLocaleString()}</span>
                     </div>
-                    <div className="p-8 flex-grow flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 leading-tight">{product.name}</h3>
-                        <span className="text-lg font-black tabular-nums text-slate-400">NT$ {product.price.toLocaleString()}</span>
-                      </div>
-                      <p className="text-slate-400 text-[11px] font-medium line-clamp-2 mb-8 flex-grow">{product.description || "No description provided."}</p>
-                      <div className="flex gap-2 pt-6 border-t border-slate-50">
-                        <button onClick={() => openEditModal(product)} className="flex-1 bg-slate-50 text-slate-900 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">Edit</button>
-                        <button onClick={() => deleteProduct(product.id)} className="px-4 bg-red-50 text-red-500 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all">Delete</button>
-                      </div>
+                    <div className="flex gap-2 mt-6">
+                      <button onClick={() => { setEditingProduct(p); setIsModalOpen(true); }} className="flex-1 bg-slate-100 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-black hover:text-white transition-all">編輯詳情</button>
+                      <button onClick={() => deleteProduct(p.id)} className="px-4 bg-red-50 text-red-500 py-3 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all">刪除</button>
                     </div>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </section>
         )}
       </main>
 
-      {/* 🎨 精緻作品編輯 Modal */}
+      {/* 編輯作品彈窗 */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[20000] bg-slate-900/40 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-3xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-10">
-              <div className="flex justify-between items-center mb-10">
-                <div className="flex flex-col">
-                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">Piece Editor</h2>
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">Configure Product Metadata</span>
-                </div>
-                <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-black transition-colors">✕</button>
+        <div className="fixed inset-0 z-[20000] bg-slate-900/40 backdrop-blur-xl flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-3xl animate-in zoom-in-95 duration-200">
+            <h2 className="text-2xl font-black italic uppercase mb-8 tracking-tighter">編輯產品資料</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-1 block">產品名稱</label>
+                <input type="text" value={editingProduct?.name || ""} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-black transition-all" placeholder="請輸入產品名稱..." />
               </div>
-
-              <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">作品名稱 Piece Name</label>
-                  <input type="text" value={editingProduct?.name || ""} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-slate-900 transition-all" />
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">價格 Price (NT$)</label>
-                    <input type="number" value={editingProduct?.price || 0} onChange={e => setEditingProduct({...editingProduct, price: parseInt(e.target.value)})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-slate-900 transition-all" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">狀態 Availability</label>
-                    <select value={editingProduct?.status ? "true" : "false"} onChange={e => setEditingProduct({...editingProduct, status: e.target.value === "true"})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-slate-900 transition-all">
-                      <option value="true">發售中 (In Stock)</option>
-                      <option value="false">存檔 (Archive)</option>
-                    </select>
-                  </div>
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-1 block">售價 (NT$)</label>
+                  <input 
+                    type="number" 
+                    value={editingProduct?.price ?? ""} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setEditingProduct({...editingProduct, price: val === "" ? 0 : parseInt(val)});
+                    }} 
+                    className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-black transition-all" 
+                  />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">圖片路徑 Image Path</label>
-                  <input type="text" value={editingProduct?.image_url || ""} onChange={e => setEditingProduct({...editingProduct, image_url: e.target.value})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-slate-900 transition-all" placeholder="assets/p1.jpg" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">簡介 Description</label>
-                  <textarea rows={3} value={editingProduct?.description || ""} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-slate-900 transition-all resize-none" />
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-1 block">上架狀態</label>
+                  <select value={editingProduct?.status ? "true" : "false"} onChange={e => setEditingProduct({...editingProduct, status: e.target.value === "true"})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-black appearance-none">
+                    <option value="true">發售中 (Active)</option>
+                    <option value="false">已存檔 (Archived)</option>
+                  </select>
                 </div>
               </div>
-
-              <div className="mt-12 flex gap-4">
-                <button onClick={saveProduct} className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all duration-300">Save Piece</button>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-1 block">圖片連結 (Image URL)</label>
+                <input type="text" value={editingProduct?.image_url || ""} onChange={e => setEditingProduct({...editingProduct, image_url: e.target.value})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-black" placeholder="例如: /assets/products/p1.jpg" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 ml-2 mb-1 block">作品描述</label>
+                <textarea rows={3} value={editingProduct?.description || ""} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} className="w-full bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm focus:ring-2 focus:ring-black" placeholder="輸入關於這件作品的簡介..." />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button onClick={saveProduct} className="flex-1 bg-black text-white py-4 rounded-2xl font-black uppercase shadow-xl shadow-slate-200 hover:bg-blue-600 transition-all duration-300">儲存變更</button>
+                <button onClick={() => setIsModalOpen(false)} className="px-6 py-4 bg-slate-100 rounded-2xl font-black uppercase text-slate-400 hover:bg-slate-200 transition-all">取消</button>
               </div>
             </div>
           </div>

@@ -132,28 +132,53 @@ export default function HomePage() {
       </section>
 
       {/* 故事 Section */}
-      <section className="py-24 bg-slate-50">
+      <section className="py-24 bg-[#fcfcfc]">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="reveal opacity-0 translate-y-10 relative overflow-hidden rounded-[60px] bg-slate-900 min-h-[500px] flex items-center group">
-            <div className="absolute inset-0 opacity-50">
+          {/* 加入 shadow-[0_0_50px_-12px_rgba(255,255,255,0.3)] 產生基礎外發光 */}
+          <div className="reveal relative overflow-hidden rounded-[40px] md:rounded-[60px] bg-[#1a1a1a] aspect-[21/9] min-h-[400px] flex items-center group shadow-2xl hover:shadow-orange-500/10 transition-shadow duration-700 border border-white/5">
+            
+            {/* 背景圖 */}
+            <div className="absolute inset-0 opacity-100">
               <Image 
-                src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/3.png" 
-                alt="Background" 
+                src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/about%20photo.png" 
+                alt="Eriju Background" 
                 fill 
-                className="w-full h-full object-cover scale-110 transition-transform duration-[2s] group-hover:scale-100" 
+                className="w-full h-full object-cover object-right transition-transform duration-[7s] group-hover:scale-105" 
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent"></div>
-            <div className="relative z-10 p-12 md:p-24 max-w-2xl text-left">
-              <span className="text-orange-500 font-black text-xs tracking-[0.4em] uppercase mb-6 block">介紹</span>
-              <h2 className="text-white text-5xl md:text-6xl font-black mb-8 leading-tight">關於 Eriju<br />的不妥協。</h2>
-              <Link href="/about" className="inline-flex items-center gap-4 text-white font-bold group/link">
-                <span className="border-b-2 border-white/30 pb-1 group-hover/link:border-white transition-all">探索故事</span>
-                <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-slate-900 transition-all">
-                  →
+
+            {/* 漸層遮罩：微調透明度讓質感更通透 */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent z-10"></div>
+
+            {/* 文字內容 */}
+            <div className="relative z-20 p-10 md:p-24 max-w-2xl text-left">
+              {/* 1. 標籤發光：加入 drop-shadow-glow */}
+              <span className="text-orange-500 font-black text-[10px] md:text-xs tracking-[0.5em] uppercase mb-6 block drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]">
+                INTRODUCTION
+              </span>
+              
+              {/* 2. 標題微光：讓白色文字帶點呼吸感 */}
+              <h2 className="text-white text-5xl md:text-7xl font-black mb-10 leading-[1.05] tracking-tighter italic drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                關於 Eriju<br />
+                <span className="text-white/60 not-italic font-light">的不妥協。</span>
+              </h2>
+              
+              {/* 3. 按鈕發光：圓圈 Hover 時產生強烈光暈 */}
+              <Link href="/about" className="inline-flex items-center gap-6 text-white font-bold group/link">
+                <span className="text-sm border-b-2 border-white/40 pb-1 group-hover/link:border-white transition-all uppercase tracking-widest">
+                  探索故事
+                </span>
+                <div className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-black group-hover/link:shadow-[0_0_20px_rgba(255,255,255,0.6)] transition-all duration-500">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
                 </div>
               </Link>
             </div>
+
+            {/* 額外點綴：右上角的一抹極弱微光，增加層次感 */}
+            <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-white/5 blur-[100px] rounded-full pointer-events-none"></div>
           </div>
         </div>
       </section>
