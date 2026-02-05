@@ -80,7 +80,7 @@ export default function HomePage() {
             <Link href="/catalog" className="reveal opacity-0 translate-y-10 release-card group block">
               <div className="aspect-[4/5] overflow-hidden bg-slate-50 relative">
                 <Image
-                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/icon.png"
+                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/calssic.png"
                   alt="可愛小卡系列"
                   fill
                   className="object-cover transition-transform duration-1000 group-hover:scale-110"
