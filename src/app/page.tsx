@@ -100,7 +100,7 @@ export default function HomePage() {
             <Link href="/catalog" className="reveal opacity-0 translate-y-10 release-card group block">
               <div className="aspect-[4/5] overflow-hidden bg-slate-50 relative">
                 <Image
-                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/3.png"
+                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/professional.png"
                   alt="專業系列"
                   fill
                   className="object-cover transition-transform duration-1000 group-hover:scale-110"
@@ -121,53 +121,69 @@ export default function HomePage() {
       </section>
 
       {/* --- 故事 Section (修正裁切與語法) --- */}
-      <section className="py-24 bg-[#fcfcfc]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="reveal opacity-0 translate-y-10 relative overflow-hidden rounded-[40px] md:rounded-[60px] bg-[#1a1a1a] aspect-[4/5] md:aspect-[16/7] min-h-[550px] md:min-h-[450px] flex items-end group shadow-2xl border border-white/5">
-            
-            {/* 背景圖層 */}
-            <div className="absolute inset-0 z-0">
-              {/* 手機版：針對手機比例優化中心點 */}
-              <div className="md:hidden relative w-full h-full">
-                <Image 
-                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/phone.png" 
-                  alt="Eriju Mobile" 
-                  fill 
-                  className="object-cover object-[75%_center] transition-transform duration-[7s] group-hover:scale-105" 
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
-              </div>
 
-              {/* 電腦版：保持右側重心 */}
-              <div className="hidden md:block relative w-full h-full">
-                <Image 
-                  src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/about%20photo.png" 
-                  alt="Eriju Desktop" 
-                  fill 
-                  className="object-cover object-right transition-transform duration-[7s] group-hover:scale-105" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent"></div>
-              </div>
-            </div>
-
-            {/* 內容區 */}
-            <div className="relative z-20 p-10 md:p-20 w-full">
-              <Link href="/about" className="inline-flex items-center gap-4 md:gap-6 text-white font-bold group/link">
-                <span className="text-sm border-b-2 border-white/40 pb-1 group-hover/link:border-white transition-all uppercase tracking-[0.2em]">
-                  探索故事
-                </span>
-                <div className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-black transition-all duration-500">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                  </svg>
-                </div>
-              </Link>
-            </div>
-          </div>
+<section className="py-12 md:py-24 bg-[#fcfcfc]">
+  <div className="max-w-7xl mx-auto px-4 md:px-6">
+    <div className="reveal opacity-0 translate-y-10 relative overflow-hidden rounded-[32px] md:rounded-[60px] w-full shadow-xl border border-black/[0.03]">
+      
+      {/* 1. 手機版內容：改用高度自動撐開，解決留白問題 */}
+      <div className="md:hidden relative w-full h-full">
+        <div className="w-full">
+          <Image 
+            src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/phone.png" 
+            alt="Eriju Mobile" 
+            width={1080}
+            height={1350}
+            className="w-full h-auto object-cover block"
+            priority
+          />
         </div>
-      </section>
+        
+        {/* 漸層遮罩與按鈕 */}
+        <div className="absolute inset-0 z-10 flex flex-col justify-end p-8">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+          <Link href="/about" className="relative z-20 inline-flex items-center gap-4 text-white font-bold group/link">
+            <span className="text-sm border-b-2 border-white/40 pb-1 group-hover/link:border-white transition-all uppercase tracking-widest">
+              探索故事
+            </span>
+            <div className="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-black transition-all duration-500">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* 2. 電腦版內容：保持不變 */}
+      <div className="hidden md:flex relative w-full aspect-[16/7] items-end p-20">
+        <div className="absolute inset-0 z-0">
+          <Image 
+            src="https://oikubhlwdbxrfhifqusn.supabase.co/storage/v1/object/public/assets/about%20photo.png" 
+            alt="Eriju Desktop" 
+            fill 
+            className="object-cover object-right transition-transform duration-[7s] group-hover:scale-105" 
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent"></div>
+        </div>
+        
+        <Link href="/about" className="relative z-20 inline-flex items-center gap-6 text-white font-bold group/link">
+          <span className="text-sm border-b-2 border-white/40 pb-1 group-hover/link:border-white transition-all uppercase tracking-widest">
+            探索故事
+          </span>
+          <div className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center group-hover/link:bg-white group-hover/link:text-black transition-all duration-500">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </Link>
+      </div>
+
+    </div>
+  </div>
+</section>
     </div>
   );
 }
