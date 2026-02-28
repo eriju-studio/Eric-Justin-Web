@@ -87,11 +87,12 @@ function BuyContent() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  const getImageUrl = (path: string) => {
-    if (!path || path === "null" || path === "") return null;
+  // --- 修正型別問題：確保回傳的是 string 而非 null ---
+  const getImageUrl = (path: string | null | undefined): string => {
+    if (!path || path === "null" || path === "") return "";
     if (path.startsWith("http")) return path;
     const { data } = supabase.storage.from("assets").getPublicUrl(path);
-    return data.publicUrl;
+    return data.publicUrl || "";
   };
 
   useEffect(() => {
@@ -112,7 +113,10 @@ function BuyContent() {
     return () => lenis.destroy();
   }, [productId]);
 
-  const images = product ? [product.image_url, product.image_url2, product.image_url3].map(getImageUrl).filter(Boolean) : [];
+  // 修正後的圖片陣列處理
+  const images = product ? [product.image_url, product.image_url2, product.image_url3]
+    .map(path => getImageUrl(path))
+    .filter(url => url !== "") : [];
 
   const moveSlide = (dir: number) => {
     if (sliderRef.current) {
@@ -144,7 +148,6 @@ function BuyContent() {
         
         {/* 左側：商品輪播 */}
         <div className="reveal-item relative group">
-          {/* 切換按鈕 */}
           <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between z-40 pointer-events-none">
             <button onClick={() => moveSlide(-1)} className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#d98b5f] transition-all pointer-events-auto shadow-xl">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
@@ -154,18 +157,16 @@ function BuyContent() {
             </button>
           </div>
 
-          {/* 圖片滑動區域 */}
           <div ref={sliderRef} className="flex aspect-square overflow-x-auto snap-x snap-mandatory scrollbar-hide no-scrollbar bg-slate-50 rounded-[40px]" onScroll={() => { if(sliderRef.current) setCurrentSlide(Math.round(sliderRef.current.scrollLeft / sliderRef.current.clientWidth)); }}>
-            {images.map((url: any, i: number) => (
+            {images.map((url: string, i: number) => (
               <div key={i} className="flex-none w-full h-full snap-start flex items-center justify-center p-6 md:p-10">
                 <img src={url} alt="" className="max-w-full max-h-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105" />
               </div>
             ))}
           </div>
 
-          {/* 底部小圖導覽 */}
           <div className="flex gap-4 mt-8 justify-center">
-            {images.map((url: any, i: number) => (
+            {images.map((url: string, i: number) => (
               <button key={i} onClick={() => sliderRef.current?.scrollTo({ left: i * sliderRef.current.clientWidth, behavior: 'smooth' })} className={`w-16 h-16 rounded-2xl border-2 transition-all overflow-hidden bg-white p-2 ${i === currentSlide ? 'border-[#d98b5f] scale-110 shadow-md' : 'border-slate-200 opacity-50 hover:opacity-100'}`}>
                 <img src={url} className="w-full h-full object-contain" alt="" />
               </button>
@@ -179,7 +180,7 @@ function BuyContent() {
             <span className="text-slate-400 font-black text-[10px] tracking-[0.5em] uppercase mb-4 block italic">{product?.tag || "系列選品"}</span>
             <h1 className="text-5xl lg:text-7xl font-black tracking-tighter leading-[0.85] mb-10 uppercase italic">{product?.name}</h1>
             <div className="flex items-baseline gap-6">
-              <span className="text-5xl font-black italic tracking-tighter text-slate-900">NT$ {product?.price.toLocaleString()}</span>
+              <span className="text-5xl font-black italic tracking-tighter text-slate-900">NT$ {product?.price?.toLocaleString() || 0}</span>
             </div>
           </section>
 
@@ -204,9 +205,9 @@ function BuyContent() {
           </div>
           
           <div className="reveal-item w-full rounded-[48px] overflow-hidden shadow-2xl bg-white mb-20">
-            {/* 動態讀取 detail_image_url，若無則顯示第一張主圖 */}
+            {/* 修正：使用空字串保底，解決 TypeScript 報錯 */}
             <img 
-              src={getImageUrl(product?.detail_image_url) || getImageUrl(product?.image_url)} 
+              src={(getImageUrl(product?.detail_image_url) || getImageUrl(product?.image_url)) || ""} 
               alt="Detail View" 
               className="w-full h-auto block"
             />
