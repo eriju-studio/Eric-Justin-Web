@@ -87,7 +87,6 @@ function BuyContent() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  // --- 修正型別問題：確保回傳的是 string 而非 null ---
   const getImageUrl = (path: string | null | undefined): string => {
     if (!path || path === "null" || path === "") return "";
     if (path.startsWith("http")) return path;
@@ -113,7 +112,6 @@ function BuyContent() {
     return () => lenis.destroy();
   }, [productId]);
 
-  // 修正後的圖片陣列處理
   const images = product ? [product.image_url, product.image_url2, product.image_url3]
     .map(path => getImageUrl(path))
     .filter(url => url !== "") : [];
@@ -143,7 +141,6 @@ function BuyContent() {
   return (
     <div className="bg-white min-h-screen pt-32 pb-40 text-slate-900 relative">
       
-      {/* 1. 頂部主要區塊 */}
       <main className={`max-w-[1400px] mx-auto px-10 lg:grid lg:grid-cols-[1.2fr_0.8fr] gap-20 items-start transition-opacity duration-300 ${!loading ? 'opacity-100' : 'opacity-0'}`}>
         
         {/* 左側：商品輪播 */}
@@ -179,8 +176,18 @@ function BuyContent() {
           <section className="reveal-item">
             <span className="text-slate-400 font-black text-[10px] tracking-[0.5em] uppercase mb-4 block italic">{product?.tag || "系列選品"}</span>
             <h1 className="text-5xl lg:text-7xl font-black tracking-tighter leading-[0.85] mb-10 uppercase italic">{product?.name}</h1>
-            <div className="flex items-baseline gap-6">
-              <span className="text-5xl font-black italic tracking-tighter text-slate-900">NT$ {product?.price?.toLocaleString() || 0}</span>
+            
+            {/* 價格區域修改：加入 original_price */}
+            <div className="flex items-baseline gap-4">
+              <span className="text-5xl font-black italic tracking-tighter text-slate-900">
+                NT$ {product?.price?.toLocaleString() || 0}
+              </span>
+              {/* 如果有原價且原價大於現價，則顯示劃線原價 */}
+              {product?.original_price && product.original_price > product.price && (
+                <span className="text-2xl font-bold italic tracking-tighter text-slate-300 line-through">
+                  NT$ {product.original_price.toLocaleString()}
+                </span>
+              )}
             </div>
           </section>
 
@@ -198,14 +205,12 @@ function BuyContent() {
       {/* 2. 下方詳情長圖區 */}
       <section className="mt-40 border-t border-slate-100 pt-32 bg-[#fafafa]">
         <div className="max-w-[1100px] mx-auto px-6 pb-40 text-center">
-          
           <div className="mb-24 reveal-item">
             <h2 className="text-xs font-black tracking-[0.5em] text-slate-400 uppercase mb-4 italic">Product Details</h2>
             <p className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter">商品細節展示</p>
           </div>
           
           <div className="reveal-item w-full rounded-[48px] overflow-hidden shadow-2xl bg-white mb-20">
-            {/* 修正：使用空字串保底，解決 TypeScript 報錯 */}
             <img 
               src={(getImageUrl(product?.detail_image_url) || getImageUrl(product?.image_url)) || ""} 
               alt="Detail View" 
@@ -218,7 +223,6 @@ function BuyContent() {
                 {product?.detail}
              </p>
           </div>
-          
         </div>
       </section>
 
