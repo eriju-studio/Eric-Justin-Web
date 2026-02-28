@@ -101,22 +101,11 @@ function BuyContent() {
 
     const fetchProduct = async () => {
       if (!productId) return;
-      const startTime = Date.now();
-      // 確保選擇了 original_price
       const { data, error } = await supabase.from("products").select("*").eq("id", productId).single();
-      
       if (!error && data) {
         setProduct(data);
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(200 - elapsedTime, 0);
-
-        setTimeout(() => {
-          setLoading(false);
-          gsap.fromTo(".reveal-item", 
-            { y: 20, opacity: 0 }, 
-            { y: 0, opacity: 1, duration: 1.0, stagger: 0.05, ease: "power4.out" }
-          );
-        }, remainingTime);
+        setLoading(false);
+        gsap.fromTo(".reveal-item", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 1, stagger: 0.1 });
       }
     };
     fetchProduct();
@@ -134,119 +123,105 @@ function BuyContent() {
   const handleConfirm = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const user = session?.user;
-
     let cart = JSON.parse(localStorage.getItem("ej_cart") || "[]");
     const idx = cart.findIndex((item: any) => item.id === product.id);
     const totalQty = idx > -1 ? cart[idx].qty + qty : qty;
-
     if (user) {
-      const { error } = await supabase
-        .from('cart')
-        .upsert({ 
-          user_id: user.id, 
-          product_id: product.id, 
-          quantity: totalQty 
-        }, { onConflict: 'user_id, product_id' });
-
-      if (error) {
-        alert(error.message);
-        return;
-      }
+      await supabase.from('cart').upsert({ user_id: user.id, product_id: product.id, quantity: totalQty }, { onConflict: 'user_id, product_id' });
     }
-
-    // 補上 original_price 確保購物車頁面能讀到灰色價格
-    if (idx > -1) {
-      cart[idx].qty = totalQty;
-    } else {
-      cart.push({ 
-        id: product.id, 
-        name: product.name, 
-        price: product.price, 
-        original_price: product.original_price, // 關鍵補丁
-        image: getImageUrl(product.image_url), 
-        qty: totalQty 
-      });
-    }
+    if (idx > -1) { cart[idx].qty = totalQty; } 
+    else { cart.push({ id: product.id, name: product.name, price: product.price, image: getImageUrl(product.image_url), qty: totalQty }); }
     localStorage.setItem("ej_cart", JSON.stringify(cart));
     window.dispatchEvent(new Event("storage"));
-    
     router.push("/cart");
   };
 
   return (
-    <div className="bg-white min-h-screen pt-40 pb-40 text-slate-900 relative">
-      <div className={`fixed inset-0 z-50 bg-white transition-opacity duration-500 px-10 pt-40 ${loading ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <div className="max-w-6xl mx-auto lg:grid lg:grid-cols-2 gap-32 items-center">
-          <div className="aspect-square bg-slate-100 rounded-[40px] animate-pulse" />
-          <div className="space-y-8 mt-10 lg:mt-0">
-            <div className="h-4 bg-slate-200 w-24 rounded-full animate-pulse" />
-            <div className="h-16 bg-slate-100 w-full rounded-2xl animate-pulse" />
-          </div>
-        </div>
-      </div>
-
-      <main className={`max-w-6xl mx-auto px-10 lg:grid lg:grid-cols-2 gap-32 items-center transition-opacity duration-300 ${!loading && product ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="reveal-item opacity-0 relative group">
-          <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 flex justify-between z-40 pointer-events-none">
-            <button onClick={() => moveSlide(-1)} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-slate-300 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#d98b5f] transition-all pointer-events-auto shadow-lg">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
+    <div className="bg-white min-h-screen pt-32 pb-40 text-slate-900 relative">
+      
+      {/* 1. 頂部主要區塊 */}
+      <main className={`max-w-[1400px] mx-auto px-10 lg:grid lg:grid-cols-[1.2fr_0.8fr] gap-20 items-start transition-opacity duration-300 ${!loading ? 'opacity-100' : 'opacity-0'}`}>
+        
+        {/* 左側：商品輪播 */}
+        <div className="reveal-item relative group">
+          {/* 切換按鈕 */}
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between z-40 pointer-events-none">
+            <button onClick={() => moveSlide(-1)} className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#d98b5f] transition-all pointer-events-auto shadow-xl">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6"/></svg>
             </button>
-            <button onClick={() => moveSlide(1)} className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-slate-300 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#d98b5f] transition-all pointer-events-auto shadow-lg">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
+            <button onClick={() => moveSlide(1)} className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm border border-slate-200 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-white hover:text-[#d98b5f] transition-all pointer-events-auto shadow-xl">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6"/></svg>
             </button>
           </div>
 
-          <div ref={sliderRef} className="flex aspect-square overflow-x-auto snap-x snap-mandatory scrollbar-hide select-none no-scrollbar" onScroll={() => { if(sliderRef.current) setCurrentSlide(Math.round(sliderRef.current.scrollLeft / sliderRef.current.clientWidth)); }}>
+          {/* 圖片滑動區域 */}
+          <div ref={sliderRef} className="flex aspect-square overflow-x-auto snap-x snap-mandatory scrollbar-hide no-scrollbar bg-slate-50 rounded-[40px]" onScroll={() => { if(sliderRef.current) setCurrentSlide(Math.round(sliderRef.current.scrollLeft / sliderRef.current.clientWidth)); }}>
             {images.map((url: any, i: number) => (
-              <div key={i} className="flex-none w-full h-full snap-start flex items-center justify-center p-12">
-                <img src={url} alt="" className="max-w-full max-h-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-[1.02]" />
+              <div key={i} className="flex-none w-full h-full snap-start flex items-center justify-center p-6 md:p-10">
+                <img src={url} alt="" className="max-w-full max-h-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105" />
               </div>
             ))}
           </div>
 
-          <div className="flex gap-4 mt-12 justify-center">
+          {/* 底部小圖導覽 */}
+          <div className="flex gap-4 mt-8 justify-center">
             {images.map((url: any, i: number) => (
-              <button key={i} onClick={() => sliderRef.current?.scrollTo({ left: i * sliderRef.current.clientWidth, behavior: 'smooth' })} className={`w-14 h-14 rounded-xl border-2 transition-all duration-300 overflow-hidden bg-white p-2 ${i === currentSlide ? 'border-[#d98b5f] scale-110 shadow-md' : 'border-slate-200 opacity-50'}`}>
+              <button key={i} onClick={() => sliderRef.current?.scrollTo({ left: i * sliderRef.current.clientWidth, behavior: 'smooth' })} className={`w-16 h-16 rounded-2xl border-2 transition-all overflow-hidden bg-white p-2 ${i === currentSlide ? 'border-[#d98b5f] scale-110 shadow-md' : 'border-slate-200 opacity-50 hover:opacity-100'}`}>
                 <img src={url} className="w-full h-full object-contain" alt="" />
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-20 lg:mt-0">
-          <section className="reveal-item opacity-0 mb-14">
+        {/* 右側：固定資訊欄 (Sticky) */}
+        <div className="mt-16 lg:mt-0 lg:sticky lg:top-32 space-y-12">
+          <section className="reveal-item">
             <span className="text-slate-400 font-black text-[10px] tracking-[0.5em] uppercase mb-4 block italic">{product?.tag || "系列選品"}</span>
-            <h1 className="text-5xl lg:text-6xl font-black tracking-tighter leading-[0.9] mb-10 uppercase italic">{product?.name}</h1>
-            <div className="flex items-baseline gap-6 mb-12">
-              <span className="text-4xl font-black italic tracking-tighter text-slate-900">NT$ {product?.price.toLocaleString()}</span>
-              {product?.original_price && product.original_price > product.price && (
-                <span className="text-xl font-bold italic text-slate-300 line-through decoration-slate-200">NT$ {product.original_price.toLocaleString()}</span>
-              )}
+            <h1 className="text-5xl lg:text-7xl font-black tracking-tighter leading-[0.85] mb-10 uppercase italic">{product?.name}</h1>
+            <div className="flex items-baseline gap-6">
+              <span className="text-5xl font-black italic tracking-tighter text-slate-900">NT$ {product?.price.toLocaleString()}</span>
             </div>
-            <p className="text-slate-500 text-sm leading-relaxed font-bold italic max-w-sm">{product?.description}</p>
           </section>
 
-          <section className="reveal-item opacity-0 mb-20 pt-12 border-t border-slate-200">
-            <h4 className="font-black text-[10px] uppercase tracking-[0.4em] text-slate-400 mb-8 italic">{product?.detail_title || "產品細節"}</h4>
-            <p className="text-[14px] text-slate-600 leading-relaxed font-bold italic whitespace-pre-line">{product?.detail}</p>
+          <section className="reveal-item pt-10 border-t border-slate-200">
+            <h4 className="font-black text-[10px] uppercase tracking-[0.4em] text-slate-400 mb-6 italic">產品簡介 / Description</h4>
+            <p className="text-slate-500 text-base leading-relaxed font-bold italic whitespace-pre-line">{product?.description}</p>
           </section>
 
-          <button onClick={() => setIsSpecOpen(true)} className="reveal-item opacity-0 w-full py-9 bg-black text-white rounded-full font-black text-[11px] uppercase tracking-[0.6em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-[#d98b5f] transition-all duration-200 active:scale-95">
-            加入購物袋
+          <button onClick={() => setIsSpecOpen(true)} className="reveal-item w-full py-9 bg-black text-white rounded-full font-black text-[11px] uppercase tracking-[0.6em] shadow-2xl hover:bg-[#d98b5f] transition-all active:scale-95">
+            立即加入購物袋
           </button>
         </div>
       </main>
 
-      <SpecPanel 
-        isOpen={isSpecOpen} 
-        onClose={() => setIsSpecOpen(false)} 
-        qty={qty} 
-        setQty={setQty} 
-        agreed={agreed} 
-        setAgreed={setAgreed} 
-        price={product?.price || 0} 
-        onConfirm={handleConfirm} 
-      />
+      {/* 2. 下方詳情長圖區 */}
+      <section className="mt-40 border-t border-slate-100 pt-32 bg-[#fafafa]">
+        <div className="max-w-[1100px] mx-auto px-6 pb-40 text-center">
+          
+          <div className="mb-24 reveal-item">
+            <h2 className="text-xs font-black tracking-[0.5em] text-slate-400 uppercase mb-4 italic">Product Details</h2>
+            <p className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter">商品細節展示</p>
+          </div>
+          
+          <div className="reveal-item w-full rounded-[48px] overflow-hidden shadow-2xl bg-white mb-20">
+            {/* 動態讀取 detail_image_url，若無則顯示第一張主圖 */}
+            <img 
+              src={getImageUrl(product?.detail_image_url) || getImageUrl(product?.image_url)} 
+              alt="Detail View" 
+              className="w-full h-auto block"
+            />
+          </div>
+
+          <div className="reveal-item max-w-2xl mx-auto mt-20 border-t border-slate-200 pt-20">
+             <p className="text-[15px] text-slate-500 leading-loose font-bold italic whitespace-pre-line">
+                {product?.detail}
+             </p>
+          </div>
+          
+        </div>
+      </section>
+
+      <SpecPanel isOpen={isSpecOpen} onClose={() => setIsSpecOpen(false)} qty={qty} setQty={setQty} agreed={agreed} setAgreed={setAgreed} price={product?.price || 0} onConfirm={handleConfirm} />
     </div>
   );
 }
